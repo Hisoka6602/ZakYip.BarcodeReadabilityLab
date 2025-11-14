@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.ML;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Models;
 
@@ -45,7 +46,7 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
 
         try
         {
-            _logger.LogInformation("开始分析条码样本，SampleId: {SampleId}, FilePath: {FilePath}",
+            _logger.LogInformation("开始分析条码样本 => SampleId: {SampleId}, FilePath: {FilePath}",
                 sample.SampleId, sample.FilePath);
 
             ValidateImageFile(sample.FilePath);
@@ -54,15 +55,20 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
             var result = PerformPrediction(sample);
 
             _logger.LogInformation(
-                "条码样本分析完成，SampleId: {SampleId}, IsAnalyzed: {IsAnalyzed}, Reason: {Reason}, Confidence: {Confidence}",
+                "条码样本分析完成 => SampleId: {SampleId}, 已分析: {IsAnalyzed}, 原因: {Reason}, 置信度: {Confidence:P2}",
                 sample.SampleId, result.IsAnalyzed, result.Reason, result.Confidence);
 
             return ValueTask.FromResult(result);
         }
+        catch (AnalysisException)
+        {
+            // 重新抛出分析异常
+            throw;
+        }
         catch (Exception ex) when (ex is not ArgumentNullException)
         {
-            _logger.LogError(ex, "分析条码样本时发生异常，SampleId: {SampleId}, FilePath: {FilePath}",
-                sample.SampleId, sample.FilePath);
+            _logger.LogError(ex, "分析条码样本时发生未预期异常 => SampleId: {SampleId}, FilePath: {FilePath}, 错误类型: {ExceptionType}",
+                sample.SampleId, sample.FilePath, ex.GetType().Name);
 
             return ValueTask.FromResult(new BarcodeAnalysisResult
             {
@@ -80,10 +86,10 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
     private void ValidateImageFile(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
-            throw new ArgumentException("图片文件路径不能为空", nameof(filePath));
+            throw new AnalysisException("图片文件路径不能为空", "IMAGE_PATH_EMPTY");
 
         if (!File.Exists(filePath))
-            throw new FileNotFoundException($"图片文件不存在：{filePath}", filePath);
+            throw new AnalysisException($"图片文件不存在：{filePath}", "IMAGE_FILE_NOT_FOUND");
     }
 
     /// <summary>
@@ -114,31 +120,32 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
         if (string.IsNullOrWhiteSpace(modelPath))
         {
             _logger.LogWarning("模型路径未配置，分析功能将不可用");
-            return;
+            throw new ConfigurationException("ML.NET 模型路径未配置", "MODEL_PATH_NOT_CONFIGURED");
         }
 
         if (!File.Exists(modelPath))
         {
-            _logger.LogError("模型文件不存在：{ModelPath}", modelPath);
-            throw new FileNotFoundException($"模型文件不存在：{modelPath}", modelPath);
+            _logger.LogError("模型文件不存在 => 模型路径: {ModelPath}", modelPath);
+            throw new ConfigurationException($"模型文件不存在：{modelPath}", "MODEL_FILE_NOT_FOUND");
         }
 
         lock (_lock)
         {
             try
             {
-                _logger.LogInformation("开始加载 ML.NET 模型：{ModelPath}", modelPath);
+                _logger.LogInformation("开始加载 ML.NET 模型 => 模型路径: {ModelPath}", modelPath);
 
                 var loadedModel = _mlContext.Model.Load(modelPath, out var modelInputSchema);
                 _predictionEngine = _mlContext.Model.CreatePredictionEngine<MlNetImageInput, MlNetPredictionOutput>(loadedModel);
                 _currentModelPath = modelPath;
 
-                _logger.LogInformation("ML.NET 模型加载成功：{ModelPath}", modelPath);
+                _logger.LogInformation("ML.NET 模型加载成功 => 模型路径: {ModelPath}", modelPath);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "加载 ML.NET 模型失败：{ModelPath}", modelPath);
-                throw new InvalidOperationException($"加载模型失败：{modelPath}", ex);
+                _logger.LogError(ex, "加载 ML.NET 模型失败 => 模型路径: {ModelPath}, 错误类型: {ExceptionType}", 
+                    modelPath, ex.GetType().Name);
+                throw new AnalysisException($"加载模型失败：{modelPath}", "MODEL_LOAD_FAILED", ex);
             }
         }
     }
@@ -149,7 +156,7 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
     private BarcodeAnalysisResult PerformPrediction(BarcodeSample sample)
     {
         if (_predictionEngine is null)
-            throw new InvalidOperationException("预测引擎未初始化");
+            throw new AnalysisException("预测引擎未初始化", "PREDICTION_ENGINE_NOT_INITIALIZED");
 
         var input = new MlNetImageInput { ImagePath = sample.FilePath };
         var prediction = _predictionEngine.Predict(input);
@@ -159,7 +166,7 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
         if (!isSuccess)
         {
             _logger.LogWarning(
-                "无法将预测标签映射为 NoreadReason，SampleId: {SampleId}, Label: {Label}",
+                "无法将预测标签映射为 NoreadReason => SampleId: {SampleId}, 标签: {Label}",
                 sample.SampleId, prediction.PredictedLabel);
 
             return new BarcodeAnalysisResult
