@@ -22,5 +22,6 @@
     <ProjectReference Include="..\ZakYip.BarcodeReadabilityLab.Core\ZakYip.BarcodeReadabilityLab.Core.csproj" />
     <ProjectReference Include="..\ZakYip.BarcodeReadabilityLab.Application\ZakYip.BarcodeReadabilityLab.Application.csproj" />
     <ProjectReference Include="..\ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet\ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.csproj" />
+    <ProjectReference Include="..\ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence\ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.csproj" />
   </ItemGroup>
 </Project>
