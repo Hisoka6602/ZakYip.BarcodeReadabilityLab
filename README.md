@@ -2,12 +2,479 @@
 
 ## 项目简介
 
-这是一个**读码图片 Noread 分析实验室**，使用 **ML.NET** 进行条码图片的可读性分析和分类。
+这是一个**读码图片 Noread 分析实验室**，使用 **ML.NET** 进行条码图片的可读性分析和分类。系统采用分层架构设计，支持自动监控目录、实时分析条码图片、异步训练任务管理，以及模型热切换等功能。
+
+## 目录
+
+- [项目简介](#项目简介)
+- [技术栈](#技术栈)
+- [项目运行流程](#项目运行流程)
+  - [系统架构流程](#1-系统架构流程)
+  - [图片监控与分析流程](#2-图片监控与分析流程)
+  - [训练任务流程](#3-训练任务流程)
+  - [完整工作流程](#4-完整工作流程)
+- [项目完成度](#项目完成度)
+  - [已完成功能](#-已完成功能)
+  - [部分完成功能](#️-部分完成功能)
+  - [未完成功能](#-未完成功能)
+- [项目缺陷](#项目缺陷)
+  - [严重缺陷](#-严重缺陷)
+  - [一般缺陷](#-一般缺陷)
+  - [改进建议](#-改进建议)
+- [未来优化方向](#未来优化方向-按-pr-单位规划)
+- [快速开始](#快速开始)
+- [HTTP API 使用说明](#http-api-使用说明)
+- [相关文档](#相关文档)
+- [贡献指南](#贡献指南)
 
 ## 技术栈
 
-- .NET 9.0
-- ML.NET 4.0
+- .NET 8.0
+- ML.NET 5.0
+- ASP.NET Core Minimal API
+- Windows Services
+
+## 项目运行流程
+
+### 1. 系统架构流程
+
+```mermaid
+graph TB
+    subgraph "Service 层 (宿主层)"
+        A[Program.cs] --> B[DirectoryMonitoringWorker]
+        A --> C[TrainingWorker]
+        A --> D[Minimal API Endpoints]
+    end
+    
+    subgraph "Application 层 (应用服务层)"
+        B --> E[DirectoryMonitoringService]
+        C --> F[TrainingJobService]
+        E --> G[UnresolvedImageRouter]
+    end
+    
+    subgraph "Infrastructure.MLNet 层 (ML.NET 实现)"
+        E --> H[MlNetBarcodeReadabilityAnalyzer]
+        C --> I[MlNetImageClassificationTrainer]
+    end
+    
+    subgraph "Core 层 (领域核心层)"
+        H --> J[IBarcodeReadabilityAnalyzer]
+        I --> K[IImageClassificationTrainer]
+        J --> L[Domain Models]
+        K --> L
+    end
+    
+    style A fill:#e1f5ff
+    style B fill:#e1f5ff
+    style C fill:#e1f5ff
+    style D fill:#e1f5ff
+    style E fill:#fff4e6
+    style F fill:#fff4e6
+    style G fill:#fff4e6
+    style H fill:#e8f5e9
+    style I fill:#e8f5e9
+    style J fill:#f3e5f5
+    style K fill:#f3e5f5
+    style L fill:#f3e5f5
+```
+
+### 2. 图片监控与分析流程
+
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant FS as 文件系统
+    participant DM as DirectoryMonitoringService
+    participant Analyzer as BarcodeReadabilityAnalyzer
+    participant Router as UnresolvedImageRouter
+    
+    User->>FS: 复制图片到监控目录
+    FS->>DM: 触发文件创建事件
+    DM->>DM: 验证文件类型和可用性
+    DM->>Analyzer: 调用 AnalyzeAsync
+    Analyzer->>Analyzer: 加载模型并推理
+    Analyzer-->>DM: 返回 BarcodeAnalysisResult
+    
+    alt 置信度 >= 阈值
+        DM->>FS: 删除原图片（已成功分类）
+        DM->>User: 记录日志：分析完成
+    else 置信度 < 阈值
+        DM->>Router: 调用 RouteToUnresolvedAsync
+        Router->>FS: 复制到无法分析目录
+        Router->>FS: 创建分析结果文本文件
+        Router-->>DM: 返回路由结果
+        DM->>User: 记录日志：需要人工审核
+    end
+```
+
+### 3. 训练任务流程
+
+```mermaid
+sequenceDiagram
+    participant Client as 客户端
+    participant API as Training API
+    participant JobService as TrainingJobService
+    participant Worker as TrainingWorker
+    participant Trainer as MlNetTrainer
+    participant FS as 文件系统
+    
+    Client->>API: POST /api/training/start
+    API->>JobService: StartTrainingAsync
+    JobService->>JobService: 生成 JobId
+    JobService->>JobService: 加入训练队列
+    JobService-->>API: 返回 JobId
+    API-->>Client: 返回任务 ID 和消息
+    
+    loop 后台任务处理
+        Worker->>JobService: TryDequeueJob
+        JobService-->>Worker: 返回训练请求
+        Worker->>JobService: UpdateJobToRunning
+        Worker->>Trainer: TrainAsync
+        Trainer->>FS: 读取训练数据
+        Trainer->>Trainer: 执行 ML.NET 训练
+        Trainer->>FS: 保存模型文件
+        Trainer-->>Worker: 返回模型路径
+        Worker->>JobService: UpdateJobToCompleted
+    end
+    
+    Client->>API: GET /api/training/status/{jobId}
+    API->>JobService: GetStatusAsync
+    JobService-->>API: 返回任务状态
+    API-->>Client: 返回训练进度和状态
+```
+
+### 4. 完整工作流程
+
+```mermaid
+flowchart TD
+    Start([系统启动]) --> Init[初始化服务]
+    Init --> LoadConfig[加载配置文件]
+    LoadConfig --> StartWorkers[启动后台工作器]
+    
+    StartWorkers --> Worker1[DirectoryMonitoringWorker]
+    StartWorkers --> Worker2[TrainingWorker]
+    StartWorkers --> Worker3[API Server]
+    
+    Worker1 --> Monitor[监控目录变化]
+    Monitor --> DetectFile{检测到新图片?}
+    DetectFile -->|是| Analyze[分析图片]
+    DetectFile -->|否| Monitor
+    
+    Analyze --> CheckConfidence{置信度 >= 阈值?}
+    CheckConfidence -->|是| DeleteFile[删除图片]
+    CheckConfidence -->|否| CopyFile[复制到待审核目录]
+    DeleteFile --> Monitor
+    CopyFile --> Monitor
+    
+    Worker2 --> CheckQueue{队列有任务?}
+    CheckQueue -->|是| Train[执行训练]
+    CheckQueue -->|否| Wait[等待 5 秒]
+    Wait --> CheckQueue
+    Train --> SaveModel[保存模型]
+    SaveModel --> CheckQueue
+    
+    Worker3 --> API[处理 HTTP 请求]
+    API --> APIRoute{请求类型?}
+    APIRoute -->|启动训练| EnqueueJob[加入训练队列]
+    APIRoute -->|查询状态| GetStatus[返回任务状态]
+    EnqueueJob --> API
+    GetStatus --> API
+    
+    style Start fill:#4caf50
+    style Init fill:#2196f3
+    style Monitor fill:#ff9800
+    style Train fill:#9c27b0
+    style API fill:#00bcd4
+```
+
+## 项目完成度
+
+### ✅ 已完成功能
+
+#### 1. 核心架构 (100%)
+- ✅ **分层架构设计**：完成 Core、Application、Infrastructure.MLNet、Service 四层架构
+- ✅ **依赖注入配置**：完整的 DI 容器配置和服务注册
+- ✅ **领域模型定义**：`BarcodeSample`、`BarcodeAnalysisResult`、`NoreadReason` 等核心模型
+- ✅ **契约接口定义**：`IBarcodeReadabilityAnalyzer`、`IImageClassificationTrainer` 等接口
+
+#### 2. ML.NET 图像分类 (90%)
+- ✅ **模型训练功能**：基于 ML.NET 的图像分类模型训练
+- ✅ **模型加载与推理**：支持模型热加载和实时推理
+- ✅ **多分类支持**：支持 7 种 NoreadReason 分类
+- ✅ **置信度计算**：返回预测置信度，支持阈值配置
+- ⚠️ **训练进度报告**：基础实现，缺少实时进度更新
+
+#### 3. 目录监控与自动分析 (95%)
+- ✅ **文件系统监控**：使用 `FileSystemWatcher` 监控目录变化
+- ✅ **自动图片分析**：检测到新图片自动触发分析
+- ✅ **智能路由**：根据置信度自动删除或复制到待审核目录
+- ✅ **多格式支持**：支持 .jpg、.jpeg、.png、.bmp 等格式
+- ✅ **递归监控选项**：可配置是否递归监控子目录
+
+#### 4. 训练任务管理 (85%)
+- ✅ **异步任务队列**：基于内存队列的训练任务管理
+- ✅ **任务状态追踪**：支持 Queued、Running、Completed、Failed、Cancelled 状态
+- ✅ **后台工作器**：`TrainingWorker` 后台服务处理训练任务
+- ⚠️ **任务取消功能**：接口定义但未完全实现
+- ❌ **任务持久化**：任务状态仅存储在内存中，重启后丢失
+
+#### 5. HTTP API (85%)
+- ✅ **Minimal API 架构**：使用 ASP.NET Core Minimal API
+- ✅ **训练任务端点**：`POST /api/training/start`、`GET /api/training/status/{jobId}`
+- ✅ **JSON 序列化配置**：统一使用 camelCase 命名风格
+- ✅ **异常处理中间件**：全局异常处理和错误响应
+- ❌ **身份验证与授权**：未实现 API 安全控制
+- ❌ **API 文档**：未集成 Swagger/OpenAPI
+
+#### 6. Windows 服务支持 (100%)
+- ✅ **Windows Service 宿主**：支持作为 Windows 服务运行
+- ✅ **服务生命周期管理**：正确处理启动、停止信号
+- ✅ **服务配置脚本**：提供 PowerShell 安装和卸载脚本
+
+### ⚠️ 部分完成功能
+
+#### 1. 模型评估与指标 (40%)
+- ⚠️ **训练评估指标**：基础的准确率计算
+- ❌ **混淆矩阵**：未实现
+- ❌ **召回率、F1 分数**：未实现
+- ❌ **评估结果持久化**：未实现
+
+#### 2. 数据增强 (30%)
+- ⚠️ **基础图像预处理**：ML.NET 内置的预处理
+- ❌ **自定义数据增强**：未实现旋转、翻转、亮度调整等
+- ❌ **不平衡数据处理**：未实现类别权重或过采样
+
+#### 3. 日志与监控 (60%)
+- ✅ **基础日志记录**：使用 `ILogger` 记录关键操作
+- ✅ **中文日志消息**：所有日志使用中文
+- ❌ **结构化日志**：未使用 Serilog 等结构化日志库
+- ❌ **性能监控**：未实现性能指标采集
+- ❌ **日志持久化配置**：未配置日志文件输出
+
+### ❌ 未完成功能
+
+#### 1. 持久化存储
+- ❌ **任务历史数据库**：训练任务历史未持久化
+- ❌ **分析结果存储**：图片分析结果未存储到数据库
+- ❌ **模型版本管理**：模型文件未进行版本追踪和管理
+
+#### 2. 高级训练功能
+- ❌ **超参数调优**：未实现学习率、Epoch 等参数配置
+- ❌ **迁移学习**：未实现基于预训练模型的微调
+- ❌ **分布式训练**：未实现多机器或 GPU 训练支持
+- ❌ **增量训练**：未实现基于现有模型的增量学习
+
+#### 3. API 高级特性
+- ❌ **身份验证**：未实现 JWT 或其他认证机制
+- ❌ **授权控制**：未实现基于角色的访问控制
+- ❌ **API 限流**：未实现请求频率限制
+- ❌ **Swagger 文档**：未集成 API 文档生成
+- ❌ **WebSocket 支持**：未实现实时进度推送
+
+#### 4. 用户界面
+- ❌ **Web 管理界面**：无 Web UI
+- ❌ **训练监控面板**：无可视化训练进度
+- ❌ **数据标注工具**：无图片标注和管理界面
+
+#### 5. 测试覆盖
+- ❌ **单元测试**：未编写单元测试
+- ❌ **集成测试**：未编写集成测试
+- ❌ **性能测试**：未进行性能测试
+
+## 项目缺陷
+
+### 🔴 严重缺陷
+
+#### 1. 任务状态丢失 (高优先级)
+- **问题**：训练任务状态仅存储在内存中，服务重启后所有任务状态丢失
+- **影响**：无法追溯历史训练任务，无法恢复中断的训练
+- **建议**：引入持久化存储（SQLite、SQL Server、或 JSON 文件）
+
+#### 2. 并发训练限制 (中优先级)
+- **问题**：当前实现为单线程串行处理训练任务
+- **影响**：大量训练任务排队时等待时间过长
+- **建议**：实现可配置的并发训练数量限制
+
+#### 3. 缺少 API 安全控制 (高优先级)
+- **问题**：API 端点无身份验证，任何人都可以触发训练任务
+- **影响**：生产环境存在安全隐患，可能被恶意利用
+- **建议**：添加 API Key 或 JWT 身份验证
+
+### 🟡 一般缺陷
+
+#### 4. 训练进度不可见 (中优先级)
+- **问题**：训练过程中无法实时查看进度，`progress` 字段未实现
+- **影响**：用户体验差，无法估计训练剩余时间
+- **建议**：实现训练进度回调和实时更新
+
+#### 5. 错误处理不完善 (中优先级)
+- **问题**：部分异常未细化处理，错误消息不够详细
+- **影响**：调试困难，用户难以理解错误原因
+- **建议**：细化异常类型，提供更详细的错误信息
+
+#### 6. 缺少日志轮转 (低优先级)
+- **问题**：日志文件未配置轮转，可能无限增长
+- **影响**：磁盘空间占用过大
+- **建议**：配置日志文件大小限制和轮转策略
+
+#### 7. 图片文件锁定问题 (中优先级)
+- **问题**：图片分析过程中可能出现文件被占用的情况
+- **影响**：偶尔出现文件访问失败
+- **建议**：增强文件访问重试机制和锁定检测
+
+### 🟢 改进建议
+
+#### 8. 模型性能优化 (低优先级)
+- **问题**：ML.NET 模型训练参数使用默认值，未调优
+- **影响**：模型准确率可能不是最优
+- **建议**：添加超参数配置和调优功能
+
+#### 9. 监控告警功能 (低优先级)
+- **问题**：无监控告警机制
+- **影响**：异常情况无法及时发现
+- **建议**：集成 Prometheus、Grafana 或邮件告警
+
+## 未来优化方向 (按 PR 单位规划)
+
+### 第一阶段：稳定性与安全性提升
+
+#### PR #1: 添加任务持久化存储
+**目标**：解决训练任务状态丢失问题
+- 引入 SQLite 轻量级数据库
+- 实现 `ITrainingJobRepository` 接口
+- 持久化训练任务状态、开始时间、完成时间、错误信息
+- 支持任务历史查询和恢复
+
+**预估工作量**：3-5 天
+
+#### PR #2: 实现 API 身份验证
+**目标**：保护 API 端点安全
+- 实现基于 API Key 的简单认证
+- 添加认证中间件
+- 配置文件中管理 API Key
+- 更新 API 文档说明认证方式
+
+**预估工作量**：2-3 天
+
+#### PR #3: 完善异常处理和日志配置
+**目标**：提升系统可观测性
+- 集成 Serilog 结构化日志
+- 配置日志文件轮转（按大小或日期）
+- 细化异常类型和错误消息
+- 添加关键操作的结构化日志
+
+**预估工作量**：2-3 天
+
+### 第二阶段：功能增强
+
+#### PR #4: 实现训练进度实时更新
+**目标**：提升用户体验
+- 实现 ML.NET 训练进度回调
+- 更新 `TrainingJobStatus` 的 `progress` 字段
+- 考虑使用 SignalR 实现 WebSocket 推送（可选）
+- 提供轮询和推送两种模式
+
+**预估工作量**：3-4 天
+
+#### PR #5: 添加模型评估指标
+**目标**：提供训练质量反馈
+- 实现混淆矩阵计算
+- 添加准确率、召回率、F1 分数计算
+- 在训练完成响应中返回评估指标
+- 持久化评估结果供后续查询
+
+**预估工作量**：3-4 天
+
+#### PR #6: 支持并发训练
+**目标**：提升训练效率
+- 实现可配置的并发训练数量
+- 使用 `SemaphoreSlim` 控制并发度
+- 添加训练资源（CPU、内存）监控
+- 优化训练任务调度策略
+
+**预估工作量**：4-5 天
+
+#### PR #7: 集成 Swagger/OpenAPI 文档
+**目标**：改善 API 可用性
+- 添加 Swashbuckle.AspNetCore 包
+- 配置 Swagger UI
+- 为所有端点添加详细的注释和示例
+- 支持在 Swagger UI 中测试 API
+
+**预估工作量**：2-3 天
+
+### 第三阶段：高级特性
+
+#### PR #8: 实现超参数配置
+**目标**：提升模型训练灵活性
+- 在 `TrainingRequest` 中添加超参数配置
+- 支持配置学习率、Epoch 数、Batch Size
+- 添加超参数验证逻辑
+- 提供推荐配置文档
+
+**预估工作量**：3-4 天
+
+#### PR #9: 添加数据增强功能
+**目标**：提升模型泛化能力
+- 实现图像旋转、翻转、亮度调整
+- 实现不平衡数据处理（过采样/欠采样）
+- 配置化数据增强参数
+- 评估数据增强对模型性能的影响
+
+**预估工作量**：4-6 天
+
+#### PR #10: 实现模型版本管理
+**目标**：管理和追踪模型历史
+- 建立模型版本元数据表
+- 实现模型回滚功能
+- 支持 A/B 测试（多模型对比）
+- 提供模型性能对比界面（可选）
+
+**预估工作量**：5-7 天
+
+### 第四阶段：测试与文档
+
+#### PR #11: 添加单元测试
+**目标**：提升代码质量和可维护性
+- 为 Core 层添加单元测试
+- 为 Application 层添加单元测试
+- 使用 Moq 模拟依赖
+- 目标代码覆盖率 > 70%
+
+**预估工作量**：5-7 天
+
+#### PR #12: 添加集成测试
+**目标**：验证端到端功能
+- 实现 API 端点集成测试
+- 实现训练任务端到端测试
+- 使用 TestServer 或 Docker 容器
+- 实现测试数据自动生成
+
+**预估工作量**：4-6 天
+
+### 第五阶段：Web UI（可选）
+
+#### PR #13: 实现 Web 管理界面 (Phase 1)
+**目标**：提供可视化管理界面
+- 使用 Blazor Server 或 React 实现前端
+- 实现训练任务列表和详情页面
+- 实现训练任务启动界面
+- 实现实时进度监控
+
+**预估工作量**：7-10 天
+
+#### PR #14: 实现 Web 管理界面 (Phase 2)
+**目标**：完善可视化功能
+- 实现模型版本管理界面
+- 实现训练历史和性能对比图表
+- 实现图片标注和管理工具
+- 实现系统配置界面
+
+**预估工作量**：7-10 天
+
+## 快速开始
+
+详细的快速开始指南请参考 [QUICKSTART.md](QUICKSTART.md)。
 
 ## HTTP API 使用说明
 
@@ -180,4 +647,26 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/training/status/$jobId" -Metho
 - 训练是长时间任务，不会阻塞 API 调用
 - 服务会持续执行目录监控和推理逻辑，与 API 调用互不干扰
 - 建议使用轮询方式定期查询训练状态，避免频繁请求
+
+## 相关文档
+
+- **[QUICKSTART.md](QUICKSTART.md)** - 5 分钟快速上手指南
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - 项目架构详细说明
+- **[USAGE.md](USAGE.md)** - 详细使用示例和场景
+- **[TRAINING_SERVICE.md](TRAINING_SERVICE.md)** - 训练服务详细说明
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Windows 服务部署指南
+- **[WINDOWS_SERVICE_SETUP.md](WINDOWS_SERVICE_SETUP.md)** - Windows 服务设置指南
+
+## 贡献指南
+
+欢迎提交 Issue 和 Pull Request！请遵守 `.github/copilot-instructions.md` 中定义的编码规范。
+
+## 许可证
+
+本项目使用 MIT 许可证。详见 LICENSE 文件。
+
+## 联系方式
+
+如有问题或建议，请通过 GitHub Issues 联系。
+
 
