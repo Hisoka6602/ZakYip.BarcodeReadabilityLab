@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 using ZakYip.BarcodeReadabilityLab.Service;
 using ZakYip.BarcodeReadabilityLab.Service.Configuration;
 using ZakYip.BarcodeReadabilityLab.Service.Endpoints;
@@ -16,8 +18,24 @@ using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Extensions;
 
-// 使用 WebApplicationBuilder 构建模式，同时支持 Minimal API 和 Windows Service
-var builder = WebApplication.CreateBuilder(args);
+// 配置 Serilog 日志
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+        .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true, reloadOnChange: true)
+        .Build())
+    .CreateLogger();
+
+try
+{
+    Log.Information("应用程序启动中...");
+
+    // 使用 WebApplicationBuilder 构建模式，同时支持 Minimal API 和 Windows Service
+    var builder = WebApplication.CreateBuilder(args);
+
+    // 使用 Serilog 作为日志提供程序
+    builder.Host.UseSerilog();
 
 // 配置 Windows Service 支持
 builder.Host.UseWindowsService(options =>
@@ -105,4 +123,18 @@ app.MapTrainingEndpoints();
 // 注册传统 MVC 控制器（向后兼容）
 app.MapControllers();
 
-app.Run();
+    Log.Information("应用程序已启动，正在监听地址：{Urls}", apiSettings.Urls);
+    app.Run();
+    
+    return 0;
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "应用程序启动失败");
+    return 1;
+}
+finally
+{
+    Log.Information("应用程序正在关闭...");
+    Log.CloseAndFlush();
+}
