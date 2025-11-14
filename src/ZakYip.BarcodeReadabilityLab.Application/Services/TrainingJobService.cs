@@ -165,6 +165,28 @@ public sealed class TrainingJobService : ITrainingJobService
     }
 
     /// <summary>
+    /// 更新任务进度
+    /// </summary>
+    internal async Task UpdateJobProgress(Guid jobId, decimal progress)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+        var trainingJob = await repository.GetByIdAsync(jobId);
+        
+        if (trainingJob is null)
+            return;
+
+        var updatedJob = trainingJob with
+        {
+            Progress = progress
+        };
+
+        await repository.UpdateAsync(updatedJob);
+
+        _logger.LogDebug("训练任务进度更新 => JobId: {JobId}, 进度: {Progress:P0}", jobId, progress);
+    }
+
+    /// <summary>
     /// 更新任务状态为完成
     /// </summary>
     internal async Task UpdateJobToCompleted(Guid jobId)

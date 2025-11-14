@@ -15,6 +15,7 @@ using ZakYip.BarcodeReadabilityLab.Service.Services;
 using ZakYip.BarcodeReadabilityLab.Service.Workers;
 using ZakYip.BarcodeReadabilityLab.Application.Extensions;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
+using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Extensions;
 
@@ -61,6 +62,17 @@ builder.Services.AddTrainingJobPersistence();
 
 // 注册应用服务（包括 IDirectoryMonitoringService、IUnresolvedImageRouter、ITrainingJobService 和 TrainingWorker）
 builder.Services.AddBarcodeAnalyzerServices();
+
+// 注册训练进度通知服务
+builder.Services.AddSingleton<ITrainingProgressNotifier, SignalRTrainingProgressNotifier>();
+
+// 注册 SignalR 服务
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.PayloadSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    });
 
 // 注册 DirectoryMonitoringWorker 后台服务
 builder.Services.AddHostedService<DirectoryMonitoringWorker>();
@@ -116,6 +128,9 @@ app.UseExceptionHandler(exceptionHandlerApp =>
 });
 
 app.UseRouting();
+
+// 注册 SignalR Hub 端点
+app.MapHub<ZakYip.BarcodeReadabilityLab.Service.Hubs.TrainingProgressHub>("/hubs/training-progress");
 
 // 注册 Minimal API 端点
 app.MapTrainingEndpoints();

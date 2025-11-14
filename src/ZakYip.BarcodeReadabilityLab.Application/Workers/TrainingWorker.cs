@@ -13,11 +13,13 @@ public sealed class TrainingWorker : BackgroundService
     private readonly ILogger<TrainingWorker> _logger;
     private readonly TrainingJobService _trainingJobService;
     private readonly IImageClassificationTrainer _trainer;
+    private readonly ITrainingProgressNotifier? _progressNotifier;
 
     public TrainingWorker(
         ILogger<TrainingWorker> logger,
         ITrainingJobService trainingJobService,
-        IImageClassificationTrainer trainer)
+        IImageClassificationTrainer trainer,
+        ITrainingProgressNotifier? progressNotifier = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         
@@ -26,6 +28,7 @@ public sealed class TrainingWorker : BackgroundService
         
         _trainingJobService = concreteService;
         _trainer = trainer ?? throw new ArgumentNullException(nameof(trainer));
+        _progressNotifier = progressNotifier;
     }
 
     /// <inheritdoc />
@@ -80,11 +83,15 @@ public sealed class TrainingWorker : BackgroundService
 
         try
         {
+            // 创建进度回调
+            var progressCallback = new TrainingProgressCallback(jobId, _trainingJobService, _progressNotifier, _logger);
+
             // 调用训练器执行训练
             var modelFilePath = await _trainer.TrainAsync(
                 request.TrainingRootDirectory,
                 request.OutputModelDirectory,
                 request.ValidationSplitRatio,
+                progressCallback,
                 cancellationToken);
 
             _logger.LogInformation("训练任务完成，JobId: {JobId}, 模型文件: {ModelFilePath}",
@@ -102,6 +109,58 @@ public sealed class TrainingWorker : BackgroundService
         {
             _logger.LogError(ex, "训练任务执行失败，JobId: {JobId}", jobId);
             await _trainingJobService.UpdateJobToFailed(jobId, $"训练任务执行失败: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 训练进度回调实现
+    /// </summary>
+    private sealed class TrainingProgressCallback : ITrainingProgressCallback
+    {
+        private readonly Guid _jobId;
+        private readonly TrainingJobService _trainingJobService;
+        private readonly ITrainingProgressNotifier? _progressNotifier;
+        private readonly ILogger<TrainingWorker> _logger;
+
+        public TrainingProgressCallback(
+            Guid jobId,
+            TrainingJobService trainingJobService,
+            ITrainingProgressNotifier? progressNotifier,
+            ILogger<TrainingWorker> logger)
+        {
+            _jobId = jobId;
+            _trainingJobService = trainingJobService;
+            _progressNotifier = progressNotifier;
+            _logger = logger;
+        }
+
+        public void ReportProgress(decimal progress, string? message = null)
+        {
+            // 异步更新进度，不阻塞训练过程
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // 更新数据库中的进度
+                    await _trainingJobService.UpdateJobProgress(_jobId, progress);
+                    
+                    // 通过 SignalR 推送进度更新
+                    if (_progressNotifier is not null)
+                    {
+                        await _progressNotifier.NotifyProgressAsync(_jobId, progress, message);
+                    }
+                    
+                    if (!string.IsNullOrEmpty(message))
+                    {
+                        _logger.LogInformation("训练进度更新 => JobId: {JobId}, 进度: {Progress:P0}, 消息: {Message}",
+                            _jobId, progress, message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "更新训练进度失败，JobId: {JobId}", _jobId);
+                }
+            });
         }
     }
 }

@@ -40,6 +40,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         string trainingRootDirectory,
         string outputModelDirectory,
         decimal? validationSplitRatio = null,
+        ITrainingProgressCallback? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         ValidateParameters(trainingRootDirectory, outputModelDirectory);
@@ -50,6 +51,9 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // 报告进度：开始扫描数据
+            progressCallback?.ReportProgress(0.05m, "开始扫描训练数据");
 
             // 扫描训练数据
             var trainingData = ScanTrainingData(trainingRootDirectory);
@@ -62,23 +66,38 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            // 报告进度：加载数据
+            progressCallback?.ReportProgress(0.15m, "加载训练数据到内存");
+
             // 加载数据到 ML.NET
             var dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            // 报告进度：构建训练管道
+            progressCallback?.ReportProgress(0.25m, "构建训练管道");
 
             // 构建训练管道
             var pipeline = BuildTrainingPipeline();
 
             _logger.LogInformation("开始训练模型...");
 
+            // 报告进度：开始训练
+            progressCallback?.ReportProgress(0.30m, "开始训练模型");
+
             // 执行训练
             var trainedModel = await Task.Run(() => pipeline.Fit(dataView), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            // 报告进度：训练完成，保存模型
+            progressCallback?.ReportProgress(0.90m, "训练完成，保存模型");
+
             // 保存模型
             var modelFilePath = SaveModel(trainedModel, dataView.Schema, outputModelDirectory);
+
+            // 报告进度：完成
+            progressCallback?.ReportProgress(1.0m, "训练任务完成");
 
             _logger.LogInformation("模型训练完成 => 模型路径: {ModelFilePath}, 训练样本数: {SampleCount}", 
                 modelFilePath, trainingData.Count);
