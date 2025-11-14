@@ -1,45 +1,57 @@
 using ZakYip.BarcodeReadabilityLab.Service;
 using ZakYip.BarcodeReadabilityLab.Service.Configuration;
 using ZakYip.BarcodeReadabilityLab.Service.Services;
+using ZakYip.BarcodeReadabilityLab.Service.Workers;
 using ZakYip.BarcodeReadabilityLab.Application.Extensions;
+using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
-var builder = Host.CreateApplicationBuilder(args);
+// 使用通用主机构建模式
+var builder = Host.CreateDefaultBuilder(args)
+    .UseWindowsService(options =>
+    {
+        options.ServiceName = "BarcodeReadabilityService";
+    })
+    .ConfigureServices((hostContext, services) =>
+    {
+        var configuration = hostContext.Configuration;
 
-// Configure settings
-builder.Services.Configure<BarcodeReadabilityServiceSettings>(
-    builder.Configuration.GetSection("BarcodeReadabilityService"));
-builder.Services.Configure<ApiSettings>(
-    builder.Configuration.GetSection("ApiSettings"));
+        // 配置选项绑定
+        services.Configure<BarcodeAnalyzerOptions>(
+            configuration.GetSection("BarcodeAnalyzerOptions"));
+        services.Configure<TrainingOptions>(
+            configuration.GetSection("TrainingOptions"));
+        services.Configure<BarcodeReadabilityServiceSettings>(
+            configuration.GetSection("BarcodeReadabilityService"));
+        services.Configure<ApiSettings>(
+            configuration.GetSection("ApiSettings"));
 
-// Register ML.NET services
-builder.Services.AddMlNetBarcodeAnalyzer(builder.Configuration);
+        // 注册 ML.NET 服务 (包括 BarcodeMlModelOptions 配置绑定)
+        services.AddMlNetBarcodeAnalyzer(configuration);
 
-// Register application services (包括训练任务服务)
-builder.Services.AddBarcodeAnalyzerServices();
+        // 注册应用服务（包括 IDirectoryMonitoringService、IUnresolvedImageRouter、ITrainingJobService 和 TrainingWorker）
+        services.AddBarcodeAnalyzerServices();
 
-// Register legacy services (向后兼容)
-builder.Services.AddSingleton<IMLModelService, MLModelService>();
-builder.Services.AddSingleton<ITrainingService, TrainingService>();
-builder.Services.AddHostedService<ImageMonitoringService>();
+        // 注册 DirectoryMonitoringWorker 后台服务
+        services.AddHostedService<DirectoryMonitoringWorker>();
 
-// Configure HTTP API
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
+        // 注册传统服务（向后兼容）
+        services.AddSingleton<IMLModelService, MLModelService>();
+        services.AddSingleton<ITrainingService, TrainingService>();
+        services.AddHostedService<ImageMonitoringService>();
 
-// Add Windows Service support
-builder.Services.AddWindowsService(options =>
-{
-    options.ServiceName = "BarcodeReadabilityService";
-});
+        // 配置 HTTP API
+        services.AddControllers();
+        services.AddEndpointsApiExplorer();
+    });
 
 var host = builder.Build();
 
-// Start the HTTP API
-var apiSettings = builder.Configuration.GetSection("ApiSettings").Get<ApiSettings>() ?? new ApiSettings();
+// 启动 HTTP API
+var apiSettings = host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<ApiSettings>>().Value;
 var webHost = new WebHostBuilder()
     .UseKestrel()
     .UseUrls(apiSettings.Urls)
