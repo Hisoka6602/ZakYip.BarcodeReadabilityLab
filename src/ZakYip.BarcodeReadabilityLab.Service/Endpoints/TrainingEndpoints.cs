@@ -33,6 +33,11 @@ public static class TrainingEndpoints
             .WithName("GetTrainingStatus")
             .WithSummary("查询训练任务状态")
             .WithDescription("根据 jobId 查询训练任务的当前状态与进度信息。");
+
+        group.MapGet("/history", GetTrainingHistoryAsync)
+            .WithName("GetTrainingHistory")
+            .WithSummary("获取训练任务历史")
+            .WithDescription("获取所有训练任务的历史记录，按开始时间降序排列。");
     }
 
     /// <summary>
@@ -144,6 +149,52 @@ public static class TrainingEndpoints
                 detail: ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "查询训练任务状态失败");
+        }
+    }
+
+    /// <summary>
+    /// 获取训练任务历史
+    /// </summary>
+    private static async Task<IResult> GetTrainingHistoryAsync(
+        [FromServices] ITrainingJobService trainingJobService,
+        [FromServices] ILogger<Program> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var allJobs = await trainingJobService.GetAllAsync(cancellationToken);
+
+            var response = allJobs.Select(status => new TrainingJobResponse
+            {
+                JobId = status.JobId,
+                State = GetEnumDescription(status.Status),
+                Progress = status.Progress,
+                Message = status.Status switch
+                {
+                    Application.Services.TrainingStatus.Queued => "训练任务排队中",
+                    Application.Services.TrainingStatus.Running => "训练任务正在执行",
+                    Application.Services.TrainingStatus.Completed => "训练任务已完成",
+                    Application.Services.TrainingStatus.Failed => $"训练任务失败: {status.ErrorMessage}",
+                    Application.Services.TrainingStatus.Cancelled => "训练任务已取消",
+                    _ => "未知状态"
+                },
+                StartTime = status.StartTime,
+                CompletedTime = status.CompletedTime,
+                ErrorMessage = status.ErrorMessage,
+                Remarks = status.Remarks
+            }).ToList();
+
+            logger.LogInformation("返回 {Count} 条训练任务历史记录", response.Count);
+
+            return Results.Ok(response);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "获取训练任务历史失败");
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "获取训练任务历史失败");
         }
     }
 

@@ -76,7 +76,7 @@ public sealed class TrainingWorker : BackgroundService
             jobId, request.TrainingRootDirectory);
 
         // 更新任务状态为运行中
-        _trainingJobService.UpdateJobToRunning(jobId);
+        await _trainingJobService.UpdateJobToRunning(jobId);
 
         try
         {
@@ -91,17 +91,17 @@ public sealed class TrainingWorker : BackgroundService
                 jobId, modelFilePath);
 
             // 更新任务状态为完成
-            _trainingJobService.UpdateJobToCompleted(jobId);
+            await _trainingJobService.UpdateJobToCompleted(jobId);
         }
         catch (OperationCanceledException)
         {
             _logger.LogWarning("训练任务被取消，JobId: {JobId}", jobId);
-            _trainingJobService.UpdateJobToFailed(jobId, "训练任务被取消");
+            await _trainingJobService.UpdateJobToFailed(jobId, "训练任务被取消");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "训练任务执行失败，JobId: {JobId}", jobId);
-            _trainingJobService.UpdateJobToFailed(jobId, $"训练任务执行失败: {ex.Message}");
+            await _trainingJobService.UpdateJobToFailed(jobId, $"训练任务执行失败: {ex.Message}");
         }
     }
 }

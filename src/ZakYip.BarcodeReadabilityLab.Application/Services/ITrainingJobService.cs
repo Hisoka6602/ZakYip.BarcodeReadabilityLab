@@ -24,4 +24,11 @@ public interface ITrainingJobService
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>训练任务状态，如果任务不存在则返回 null</returns>
     ValueTask<TrainingJobStatus?> GetStatusAsync(Guid jobId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取所有训练任务（按开始时间降序）
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>训练任务状态列表</returns>
+    Task<IReadOnlyList<TrainingJobStatus>> GetAllAsync(CancellationToken cancellationToken = default);
 }

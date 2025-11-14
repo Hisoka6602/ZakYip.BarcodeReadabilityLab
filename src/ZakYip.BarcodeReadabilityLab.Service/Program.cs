@@ -14,6 +14,7 @@ using ZakYip.BarcodeReadabilityLab.Service.Workers;
 using ZakYip.BarcodeReadabilityLab.Application.Extensions;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
+using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Extensions;
 
 // 使用 WebApplicationBuilder 构建模式，同时支持 Minimal API 和 Windows Service
 var builder = WebApplication.CreateBuilder(args);
@@ -36,6 +37,9 @@ builder.Services.Configure<ApiSettings>(
 
 // 注册 ML.NET 服务 (包括 BarcodeMlModelOptions 配置绑定)
 builder.Services.AddMlNetBarcodeAnalyzer(builder.Configuration);
+
+// 注册训练任务持久化服务
+builder.Services.AddTrainingJobPersistence();
 
 // 注册应用服务（包括 IDirectoryMonitoringService、IUnresolvedImageRouter、ITrainingJobService 和 TrainingWorker）
 builder.Services.AddBarcodeAnalyzerServices();

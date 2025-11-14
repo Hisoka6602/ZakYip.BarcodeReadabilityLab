@@ -1,7 +1,10 @@
 namespace ZakYip.BarcodeReadabilityLab.Application.Services;
 
 using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 
 /// <summary>
 /// 训练任务服务实现
@@ -9,18 +12,20 @@ using Microsoft.Extensions.Logging;
 public sealed class TrainingJobService : ITrainingJobService
 {
     private readonly ILogger<TrainingJobService> _logger;
-    private readonly ConcurrentDictionary<Guid, TrainingJobStatus> _jobs;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ConcurrentQueue<(Guid jobId, TrainingRequest request)> _jobQueue;
 
-    public TrainingJobService(ILogger<TrainingJobService> logger)
+    public TrainingJobService(
+        ILogger<TrainingJobService> logger,
+        IServiceScopeFactory scopeFactory)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _jobs = new ConcurrentDictionary<Guid, TrainingJobStatus>();
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
         _jobQueue = new ConcurrentQueue<(Guid, TrainingRequest)>();
     }
 
     /// <inheritdoc />
-    public ValueTask<Guid> StartTrainingAsync(TrainingRequest request, CancellationToken cancellationToken = default)
+    public async ValueTask<Guid> StartTrainingAsync(TrainingRequest request, CancellationToken cancellationToken = default)
     {
         if (request is null)
             throw new ArgumentNullException(nameof(request));
@@ -29,18 +34,25 @@ public sealed class TrainingJobService : ITrainingJobService
 
         var jobId = Guid.NewGuid();
 
-        // 创建初始任务状态
-        var jobStatus = new TrainingJobStatus
+        // 创建训练任务领域模型
+        var trainingJob = new TrainingJob
         {
             JobId = jobId,
-            Status = TrainingStatus.Queued,
+            TrainingRootDirectory = request.TrainingRootDirectory,
+            OutputModelDirectory = request.OutputModelDirectory,
+            ValidationSplitRatio = request.ValidationSplitRatio,
+            Status = TrainingJobState.Queued,
             Progress = 0.0m,
             StartTime = DateTimeOffset.UtcNow,
             Remarks = request.Remarks
         };
 
-        // 添加到任务字典
-        _jobs[jobId] = jobStatus;
+        // 持久化到数据库
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+            await repository.AddAsync(trainingJob, cancellationToken);
+        }
 
         // 加入队列
         _jobQueue.Enqueue((jobId, request));
@@ -48,14 +60,51 @@ public sealed class TrainingJobService : ITrainingJobService
         _logger.LogInformation("训练任务已加入队列，JobId: {JobId}, 训练目录: {TrainingRootDirectory}",
             jobId, request.TrainingRootDirectory);
 
-        return ValueTask.FromResult(jobId);
+        return jobId;
     }
 
     /// <inheritdoc />
-    public ValueTask<TrainingJobStatus?> GetStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
+    public async ValueTask<TrainingJobStatus?> GetStatusAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
-        var status = _jobs.TryGetValue(jobId, out var jobStatus) ? jobStatus : null;
-        return ValueTask.FromResult(status);
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+        var trainingJob = await repository.GetByIdAsync(jobId, cancellationToken);
+        
+        if (trainingJob is null)
+            return null;
+
+        // 转换为应用层状态对象
+        return new TrainingJobStatus
+        {
+            JobId = trainingJob.JobId,
+            Status = MapToTrainingStatus(trainingJob.Status),
+            Progress = trainingJob.Progress,
+            StartTime = trainingJob.StartTime,
+            CompletedTime = trainingJob.CompletedTime,
+            ErrorMessage = trainingJob.ErrorMessage,
+            Remarks = trainingJob.Remarks
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<TrainingJobStatus>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+        var trainingJobs = await repository.GetAllAsync(cancellationToken);
+        
+        return trainingJobs
+            .Select(job => new TrainingJobStatus
+            {
+                JobId = job.JobId,
+                Status = MapToTrainingStatus(job.Status),
+                Progress = job.Progress,
+                StartTime = job.StartTime,
+                CompletedTime = job.CompletedTime,
+                ErrorMessage = job.ErrorMessage,
+                Remarks = job.Remarks
+            })
+            .ToList();
     }
 
     /// <summary>
@@ -75,76 +124,107 @@ public sealed class TrainingJobService : ITrainingJobService
     /// <summary>
     /// 更新任务状态
     /// </summary>
-    internal void UpdateJobStatus(Guid jobId, Action<TrainingJobStatus> updateAction)
+    internal async Task UpdateJobStatus(Guid jobId, Action<TrainingJob> updateAction)
     {
-        if (_jobs.TryGetValue(jobId, out var currentStatus))
-        {
-            // 创建新的状态对象（record 是不可变的）
-            var newStatus = currentStatus with { };
-            updateAction(newStatus);
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+        var trainingJob = await repository.GetByIdAsync(jobId);
+        
+        if (trainingJob is null)
+            return;
 
-            // 更新字典中的状态
-            _jobs[jobId] = newStatus;
-        }
+        // 应用更新操作
+        updateAction(trainingJob);
+
+        // 保存更新后的任务
+        await repository.UpdateAsync(trainingJob);
     }
 
     /// <summary>
     /// 更新任务状态为运行中
     /// </summary>
-    internal void UpdateJobToRunning(Guid jobId)
+    internal async Task UpdateJobToRunning(Guid jobId)
     {
-        if (_jobs.TryGetValue(jobId, out var currentStatus))
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+        var trainingJob = await repository.GetByIdAsync(jobId);
+        
+        if (trainingJob is null)
+            return;
+
+        var updatedJob = trainingJob with
         {
-            var newStatus = currentStatus with
-            {
-                Status = TrainingStatus.Running,
-                Progress = 0.0m
-            };
+            Status = TrainingJobState.Running,
+            Progress = 0.0m
+        };
 
-            _jobs[jobId] = newStatus;
+        await repository.UpdateAsync(updatedJob);
 
-            _logger.LogInformation("训练任务开始执行，JobId: {JobId}", jobId);
-        }
+        _logger.LogInformation("训练任务开始执行，JobId: {JobId}", jobId);
     }
 
     /// <summary>
     /// 更新任务状态为完成
     /// </summary>
-    internal void UpdateJobToCompleted(Guid jobId)
+    internal async Task UpdateJobToCompleted(Guid jobId)
     {
-        if (_jobs.TryGetValue(jobId, out var currentStatus))
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+        var trainingJob = await repository.GetByIdAsync(jobId);
+        
+        if (trainingJob is null)
+            return;
+
+        var updatedJob = trainingJob with
         {
-            var newStatus = currentStatus with
-            {
-                Status = TrainingStatus.Completed,
-                Progress = 1.0m,
-                CompletedTime = DateTimeOffset.UtcNow
-            };
+            Status = TrainingJobState.Completed,
+            Progress = 1.0m,
+            CompletedTime = DateTimeOffset.UtcNow
+        };
 
-            _jobs[jobId] = newStatus;
+        await repository.UpdateAsync(updatedJob);
 
-            _logger.LogInformation("训练任务已完成，JobId: {JobId}", jobId);
-        }
+        _logger.LogInformation("训练任务已完成，JobId: {JobId}", jobId);
     }
 
     /// <summary>
     /// 更新任务状态为失败
     /// </summary>
-    internal void UpdateJobToFailed(Guid jobId, string errorMessage)
+    internal async Task UpdateJobToFailed(Guid jobId, string errorMessage)
     {
-        if (_jobs.TryGetValue(jobId, out var currentStatus))
+        using var scope = _scopeFactory.CreateScope();
+        var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+        var trainingJob = await repository.GetByIdAsync(jobId);
+        
+        if (trainingJob is null)
+            return;
+
+        var updatedJob = trainingJob with
         {
-            var newStatus = currentStatus with
-            {
-                Status = TrainingStatus.Failed,
-                CompletedTime = DateTimeOffset.UtcNow,
-                ErrorMessage = errorMessage
-            };
+            Status = TrainingJobState.Failed,
+            CompletedTime = DateTimeOffset.UtcNow,
+            ErrorMessage = errorMessage
+        };
 
-            _jobs[jobId] = newStatus;
+        await repository.UpdateAsync(updatedJob);
 
-            _logger.LogError("训练任务失败，JobId: {JobId}, 错误: {ErrorMessage}", jobId, errorMessage);
-        }
+        _logger.LogError("训练任务失败，JobId: {JobId}, 错误: {ErrorMessage}", jobId, errorMessage);
+    }
+
+    /// <summary>
+    /// 映射领域状态到应用层状态
+    /// </summary>
+    private static TrainingStatus MapToTrainingStatus(TrainingJobState state)
+    {
+        return state switch
+        {
+            TrainingJobState.Queued => TrainingStatus.Queued,
+            TrainingJobState.Running => TrainingStatus.Running,
+            TrainingJobState.Completed => TrainingStatus.Completed,
+            TrainingJobState.Failed => TrainingStatus.Failed,
+            TrainingJobState.Cancelled => TrainingStatus.Cancelled,
+            _ => throw new ArgumentOutOfRangeException(nameof(state), state, "未知的训练任务状态")
+        };
     }
 
     /// <summary>
