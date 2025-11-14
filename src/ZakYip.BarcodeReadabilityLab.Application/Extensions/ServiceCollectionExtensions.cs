@@ -26,6 +26,9 @@ public static class ServiceCollectionExtensions
         // 注册 IDirectoryMonitoringService 实现
         services.AddSingleton<IDirectoryMonitoringService, DirectoryMonitoringService>();
 
+        // 注册系统资源监控服务
+        services.AddSingleton<IResourceMonitor, ResourceMonitor>();
+
         // 注册 ITrainingJobService 实现
         services.AddSingleton<TrainingJobService>();
         services.AddSingleton<ITrainingJobService>(sp => sp.GetRequiredService<TrainingJobService>());

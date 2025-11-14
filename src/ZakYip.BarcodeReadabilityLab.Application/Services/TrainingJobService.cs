@@ -3,6 +3,8 @@ namespace ZakYip.BarcodeReadabilityLab.Application.Services;
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
@@ -10,19 +12,30 @@ using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 /// <summary>
 /// 训练任务服务实现
 /// </summary>
-public sealed class TrainingJobService : ITrainingJobService
+public sealed class TrainingJobService : ITrainingJobService, IDisposable
 {
     private readonly ILogger<TrainingJobService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ConcurrentQueue<(Guid jobId, TrainingRequest request)> _jobQueue;
+    private readonly SemaphoreSlim _concurrencySemaphore;
+    private readonly TrainingOptions _trainingOptions;
+    private bool _disposed;
 
     public TrainingJobService(
         ILogger<TrainingJobService> logger,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IOptions<TrainingOptions> trainingOptions)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+        _trainingOptions = trainingOptions?.Value ?? throw new ArgumentNullException(nameof(trainingOptions));
         _jobQueue = new ConcurrentQueue<(Guid, TrainingRequest)>();
+
+        // 初始化并发控制信号量
+        var maxConcurrency = Math.Max(1, _trainingOptions.MaxConcurrentTrainingJobs);
+        _concurrencySemaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
+
+        _logger.LogInformation("训练任务服务已初始化，最大并发数: {MaxConcurrency}", maxConcurrency);
     }
 
     /// <inheritdoc />
@@ -122,6 +135,41 @@ public sealed class TrainingJobService : ITrainingJobService
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// 等待获取并发训练槽位
+    /// </summary>
+    /// <param name="cancellationToken">取消令牌</param>
+    internal async Task WaitForTrainingSlotAsync(CancellationToken cancellationToken = default)
+    {
+        await _concurrencySemaphore.WaitAsync(cancellationToken);
+        _logger.LogDebug("获取到训练槽位，当前可用槽位数: {AvailableSlots}", _concurrencySemaphore.CurrentCount);
+    }
+
+    /// <summary>
+    /// 释放并发训练槽位
+    /// </summary>
+    internal void ReleaseTrainingSlot()
+    {
+        _concurrencySemaphore.Release();
+        _logger.LogDebug("释放训练槽位，当前可用槽位数: {AvailableSlots}", _concurrencySemaphore.CurrentCount);
+    }
+
+    /// <summary>
+    /// 获取当前可用的训练槽位数
+    /// </summary>
+    internal int GetAvailableTrainingSlots()
+    {
+        return _concurrencySemaphore.CurrentCount;
+    }
+
+    /// <summary>
+    /// 获取最大并发训练任务数
+    /// </summary>
+    internal int GetMaxConcurrentTrainingJobs()
+    {
+        return _trainingOptions.MaxConcurrentTrainingJobs;
     }
 
     /// <summary>
@@ -275,5 +323,19 @@ public sealed class TrainingJobService : ITrainingJobService
             if (ratio < 0.0m || ratio > 1.0m)
                 throw new TrainingException("验证集分割比例必须在 0.0 到 1.0 之间", "INVALID_SPLIT_RATIO");
         }
+    }
+
+    /// <summary>
+    /// 释放资源
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _concurrencySemaphore?.Dispose();
+        _disposed = true;
+
+        _logger.LogInformation("训练任务服务资源已释放");
     }
 }

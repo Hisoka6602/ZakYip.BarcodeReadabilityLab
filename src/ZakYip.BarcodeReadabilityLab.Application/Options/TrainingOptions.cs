@@ -19,4 +19,19 @@ public record class TrainingOptions
     /// 验证集分割比例（0.0 到 1.0 之间，可选）
     /// </summary>
     public decimal? ValidationSplitRatio { get; init; }
+
+    /// <summary>
+    /// 最大并发训练任务数量（默认值：1）
+    /// </summary>
+    public int MaxConcurrentTrainingJobs { get; init; } = 1;
+
+    /// <summary>
+    /// 是否启用资源监控（默认值：false）
+    /// </summary>
+    public bool EnableResourceMonitoring { get; init; } = false;
+
+    /// <summary>
+    /// 资源监控间隔（秒）（默认值：5）
+    /// </summary>
+    public int ResourceMonitoringIntervalSeconds { get; init; } = 5;
 }
