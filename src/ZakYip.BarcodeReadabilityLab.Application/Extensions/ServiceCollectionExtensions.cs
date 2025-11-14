@@ -2,6 +2,7 @@ namespace ZakYip.BarcodeReadabilityLab.Application.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
+using ZakYip.BarcodeReadabilityLab.Application.Workers;
 
 /// <summary>
 /// 应用服务注册扩展方法
@@ -24,6 +25,13 @@ public static class ServiceCollectionExtensions
 
         // 注册 IDirectoryMonitoringService 实现
         services.AddSingleton<IDirectoryMonitoringService, DirectoryMonitoringService>();
+
+        // 注册 ITrainingJobService 实现
+        services.AddSingleton<TrainingJobService>();
+        services.AddSingleton<ITrainingJobService>(sp => sp.GetRequiredService<TrainingJobService>());
+
+        // 注册训练任务后台工作器
+        services.AddHostedService<TrainingWorker>();
 
         return services;
     }

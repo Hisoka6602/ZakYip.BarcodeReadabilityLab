@@ -3,6 +3,7 @@ namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
+using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Services;
 
@@ -34,6 +35,9 @@ public static class ServiceCollectionExtensions
         // 注册 IBarcodeReadabilityAnalyzer 实现
         services.AddSingleton<IBarcodeReadabilityAnalyzer, MlNetBarcodeReadabilityAnalyzer>();
 
+        // 注册 IImageClassificationTrainer 实现
+        services.AddSingleton<IImageClassificationTrainer, MlNetImageClassificationTrainer>();
+
         return services;
     }
 
@@ -58,6 +62,9 @@ public static class ServiceCollectionExtensions
 
         // 注册 IBarcodeReadabilityAnalyzer 实现
         services.AddSingleton<IBarcodeReadabilityAnalyzer, MlNetBarcodeReadabilityAnalyzer>();
+
+        // 注册 IImageClassificationTrainer 实现
+        services.AddSingleton<IImageClassificationTrainer, MlNetImageClassificationTrainer>();
 
         return services;
     }

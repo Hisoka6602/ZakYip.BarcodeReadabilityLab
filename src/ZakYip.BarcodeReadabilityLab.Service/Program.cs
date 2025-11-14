@@ -1,6 +1,8 @@
 using ZakYip.BarcodeReadabilityLab.Service;
 using ZakYip.BarcodeReadabilityLab.Service.Configuration;
 using ZakYip.BarcodeReadabilityLab.Service.Services;
+using ZakYip.BarcodeReadabilityLab.Application.Extensions;
+using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,7 +15,13 @@ builder.Services.Configure<BarcodeReadabilityServiceSettings>(
 builder.Services.Configure<ApiSettings>(
     builder.Configuration.GetSection("ApiSettings"));
 
-// Register services
+// Register ML.NET services
+builder.Services.AddMlNetBarcodeAnalyzer(builder.Configuration);
+
+// Register application services (包括训练任务服务)
+builder.Services.AddBarcodeAnalyzerServices();
+
+// Register legacy services (向后兼容)
 builder.Services.AddSingleton<IMLModelService, MLModelService>();
 builder.Services.AddSingleton<ITrainingService, TrainingService>();
 builder.Services.AddHostedService<ImageMonitoringService>();
@@ -38,8 +46,10 @@ var webHost = new WebHostBuilder()
     .ConfigureServices(services =>
     {
         services.AddControllers();
+        // 传递服务实例到 Web API
         services.AddSingleton(host.Services.GetRequiredService<ITrainingService>());
         services.AddSingleton(host.Services.GetRequiredService<IMLModelService>());
+        services.AddSingleton(host.Services.GetRequiredService<ZakYip.BarcodeReadabilityLab.Application.Services.ITrainingJobService>());
     })
     .Configure(app =>
     {
