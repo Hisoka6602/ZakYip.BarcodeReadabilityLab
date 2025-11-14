@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>训练进度监控示例</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-weight: 500;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .progress-container {
+            margin-top: 30px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #28a745;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .log-container {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .log-entry {
+            margin-bottom: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .log-entry.info {
+            color: #17a2b8;
+        }
+        .log-entry.success {
+            color: #28a745;
+        }
+        .log-entry.error {
+            color: #dc3545;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>训练进度实时监控</h1>
+        
+        <div class="input-group">
+            <label for="serverUrl">服务器地址:</label>
+            <input type="text" id="serverUrl" value="http://localhost:5000/hubs/training-progress" placeholder="http://localhost:5000/hubs/training-progress">
+        </div>
+        
+        <div class="input-group">
+            <label for="jobId">训练任务 ID:</label>
+            <input type="text" id="jobId" placeholder="输入训练任务 GUID">
+        </div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()">连接</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>断开</button>
+            <button id="subscribeBtn" onclick="subscribe()" disabled>订阅任务</button>
+            <button id="unsubscribeBtn" onclick="unsubscribe()" disabled>取消订阅</button>
+            <span class="status disconnected" id="status">未连接</span>
+        </div>
+        
+        <div class="progress-container">
+            <h3>训练进度</h3>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="progressBar" style="width: 0%;">0%</div>
+            </div>
+            <div id="progressMessage" style="color: #666; font-size: 14px;">等待连接...</div>
+        </div>
+        
+        <div class="log-container" id="logContainer">
+            <strong>日志输出:</strong>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+    <script>
+        let connection = null;
+        let isSubscribed = false;
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const timestamp = new Date().toLocaleTimeString('zh-CN');
+            entry.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(entry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function updateStatus(connected) {
+            const status = document.getElementById('status');
+            status.textContent = connected ? '已连接' : '未连接';
+            status.className = connected ? 'status connected' : 'status disconnected';
+        }
+
+        function updateButtons(connected, subscribed) {
+            document.getElementById('connectBtn').disabled = connected;
+            document.getElementById('disconnectBtn').disabled = !connected;
+            document.getElementById('subscribeBtn').disabled = !connected || subscribed;
+            document.getElementById('unsubscribeBtn').disabled = !connected || !subscribed;
+        }
+
+        function updateProgress(progress, message) {
+            const progressBar = document.getElementById('progressBar');
+            const progressMessage = document.getElementById('progressMessage');
+            
+            const percentage = Math.round(progress * 100);
+            progressBar.style.width = `${percentage}%`;
+            progressBar.textContent = `${percentage}%`;
+            
+            if (message) {
+                progressMessage.textContent = message;
+            }
+        }
+
+        async function connect() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            
+            if (!serverUrl) {
+                log('请输入服务器地址', 'error');
+                return;
+            }
+
+            try {
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl(serverUrl)
+                    .withAutomaticReconnect()
+                    .build();
+
+                connection.on("ProgressUpdated", (data) => {
+                    log(`进度更新: ${(data.progress * 100).toFixed(1)}% - ${data.message || '无消息'}`, 'success');
+                    updateProgress(data.progress, data.message);
+                });
+
+                connection.onreconnecting(() => {
+                    log('连接断开，正在重连...', 'info');
+                    updateStatus(false);
+                });
+
+                connection.onreconnected(() => {
+                    log('重新连接成功', 'success');
+                    updateStatus(true);
+                });
+
+                connection.onclose(() => {
+                    log('连接已关闭', 'error');
+                    updateStatus(false);
+                    updateButtons(false, false);
+                    isSubscribed = false;
+                });
+
+                await connection.start();
+                log('连接成功', 'success');
+                updateStatus(true);
+                updateButtons(true, false);
+            } catch (err) {
+                log(`连接失败: ${err}`, 'error');
+                updateStatus(false);
+            }
+        }
+
+        async function disconnect() {
+            if (connection) {
+                try {
+                    await connection.stop();
+                    log('已断开连接', 'info');
+                    updateStatus(false);
+                    updateButtons(false, false);
+                    isSubscribed = false;
+                } catch (err) {
+                    log(`断开连接失败: ${err}`, 'error');
+                }
+            }
+        }
+
+        async function subscribe() {
+            const jobId = document.getElementById('jobId').value;
+            
+            if (!jobId) {
+                log('请输入训练任务 ID', 'error');
+                return;
+            }
+
+            try {
+                await connection.invoke("SubscribeToJob", jobId);
+                log(`已订阅训练任务: ${jobId}`, 'success');
+                isSubscribed = true;
+                updateButtons(true, true);
+            } catch (err) {
+                log(`订阅失败: ${err}`, 'error');
+            }
+        }
+
+        async function unsubscribe() {
+            const jobId = document.getElementById('jobId').value;
+            
+            if (!jobId) {
+                log('请输入训练任务 ID', 'error');
+                return;
+            }
+
+            try {
+                await connection.invoke("UnsubscribeFromJob", jobId);
+                log(`已取消订阅训练任务: ${jobId}`, 'info');
+                isSubscribed = false;
+                updateButtons(true, false);
+            } catch (err) {
+                log(`取消订阅失败: ${err}`, 'error');
+            }
+        }
+
+        // 页面加载时显示欢迎消息
+        window.onload = function() {
+            log('训练进度监控客户端已加载', 'info');
+            log('请先连接到服务器，然后输入训练任务 ID 进行订阅', 'info');
+        };
+    </script>
+</body>
+</html>
