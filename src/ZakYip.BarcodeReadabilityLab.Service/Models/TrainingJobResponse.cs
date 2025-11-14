@@ -5,46 +5,69 @@ using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 /// <summary>
 /// 训练任务响应模型（字段名使用小驼峰风格）
 /// </summary>
+/// <remarks>
+/// 提供训练任务的完整状态信息，包括进度、时间、错误信息和评估指标。
+/// </remarks>
+/// <example>
+/// {
+///   "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+///   "state": "运行中",
+///   "progress": 0.65,
+///   "message": "训练任务正在执行",
+///   "startTime": "2024-01-01T10:00:00Z",
+///   "completedTime": null,
+///   "errorMessage": null,
+///   "remarks": "第一次训练测试"
+/// }
+/// </example>
 public record class TrainingJobResponse
 {
     /// <summary>
     /// 训练任务唯一标识符
     /// </summary>
+    /// <example>3fa85f64-5717-4562-b3fc-2c963f66afa6</example>
     public required Guid JobId { get; init; }
 
     /// <summary>
     /// 训练任务状态描述
     /// </summary>
+    /// <example>运行中</example>
     public required string State { get; init; }
 
     /// <summary>
     /// 训练进度百分比（0.0 到 1.0 之间，可选）
     /// </summary>
+    /// <example>0.65</example>
     public decimal? Progress { get; init; }
 
     /// <summary>
     /// 响应消息
     /// </summary>
+    /// <example>训练任务正在执行</example>
     public string? Message { get; init; }
 
     /// <summary>
     /// 训练开始时间（可选）
     /// </summary>
+    /// <example>2024-01-01T10:00:00Z</example>
     public DateTimeOffset? StartTime { get; init; }
 
     /// <summary>
     /// 训练完成时间（可选）
     /// </summary>
+    /// <example>2024-01-01T11:30:00Z</example>
     public DateTimeOffset? CompletedTime { get; init; }
 
     /// <summary>
     /// 错误信息（训练失败时可用）
     /// </summary>
+    /// <example>训练数据不足</example>
     public string? ErrorMessage { get; init; }
 
     /// <summary>
     /// 训练任务备注说明（可选）
     /// </summary>
+    /// <example>第一次训练测试</example>
     public string? Remarks { get; init; }
 
     /// <summary>

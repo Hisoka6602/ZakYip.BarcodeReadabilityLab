@@ -27,17 +27,51 @@ public static class TrainingEndpoints
         group.MapPost("/start", StartTrainingAsync)
             .WithName("StartTraining")
             .WithSummary("启动训练任务")
-            .WithDescription("触发一次基于目录的训练任务。如果请求体中未提供参数，则使用配置文件中的默认 TrainingOptions。");
+            .WithDescription(@"触发一次基于目录的训练任务。
+
+**功能说明：**
+- 如果请求体中未提供参数，则使用配置文件中的默认 TrainingOptions
+- 训练数据目录应包含按类别组织的子目录（如 readable、unreadable）
+- 支持自定义验证集分割比例
+- 可添加备注说明便于管理历史任务
+
+**返回值：**
+- 成功时返回训练任务 ID，可用于后续查询任务状态")
+            .Produces<StartTrainingResponse>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/status/{jobId:guid}", GetTrainingStatusAsync)
             .WithName("GetTrainingStatus")
             .WithSummary("查询训练任务状态")
-            .WithDescription("根据 jobId 查询训练任务的当前状态与进度信息。");
+            .WithDescription(@"根据 jobId 查询训练任务的当前状态与进度信息。
+
+**功能说明：**
+- 返回任务的实时状态（排队中、运行中、已完成、失败、已取消）
+- 包含训练进度百分比（0.0 到 1.0）
+- 完成后提供模型评估指标
+
+**状态说明：**
+- 排队中：任务已创建，等待执行
+- 运行中：任务正在训练模型
+- 已完成：训练成功完成
+- 失败：训练过程中发生错误
+- 已取消：任务被用户取消")
+            .Produces<TrainingJobResponse>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/history", GetTrainingHistoryAsync)
             .WithName("GetTrainingHistory")
             .WithSummary("获取训练任务历史")
-            .WithDescription("获取所有训练任务的历史记录，按开始时间降序排列。");
+            .WithDescription(@"获取所有训练任务的历史记录，按开始时间降序排列。
+
+**功能说明：**
+- 返回所有历史训练任务列表
+- 包含每个任务的完整状态信息
+- 可用于分析和跟踪训练历史")
+            .Produces<List<TrainingJobResponse>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
     }
 
     /// <summary>
