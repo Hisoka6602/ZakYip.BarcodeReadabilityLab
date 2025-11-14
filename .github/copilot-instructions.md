@@ -525,7 +525,346 @@ public class Validator
 
 ---
 
-## 12. 总结
+## 12. 使用 required + init 实现更安全的对象创建
+
+### 12.1 基本原则
+
+- **对于不可空的必需属性，使用 `required` 关键字**
+- **对于不应在创建后修改的属性，使用 `init` 访问器**
+- 确保某些属性在对象创建时必须被设置，避免部分初始化的对象
+
+### 12.2 适用场景
+
+- DTO（数据传输对象）
+- 配置对象
+- 事件参数
+- 所有不可变数据模型
+
+**示例：**
+```csharp
+// ✅ 推荐：使用 required + init 确保安全初始化
+public record class BarcodeAnalysisRequest
+{
+    public required string ImagePath { get; init; }
+    public required Guid RequestId { get; init; }
+    public required DateTime RequestTime { get; init; }
+    public string? ModelVersion { get; init; }
+}
+
+// ✅ 推荐：记录类型的简洁形式也是 required + init
+public record AnalysisResult(string Label, decimal Confidence);
+
+// ❌ 避免：可变的 set 访问器导致对象状态不可控
+public class BarcodeAnalysisRequest
+{
+    public string ImagePath { get; set; } = string.Empty;
+    public Guid RequestId { get; set; }
+}
+```
+
+---
+
+## 13. 启用可空引用类型
+
+### 13.1 项目配置
+
+- **所有项目必须启用可空引用类型**
+- 在 `.csproj` 文件中设置 `<Nullable>enable</Nullable>`
+
+### 13.2 使用规范
+
+- **明确标记可空类型**：使用 `?` 标记可能为 null 的引用类型
+- **避免不必要的 null 检查**：编译器会帮助识别潜在的 null 引用问题
+- 让编译器对可能的空引用问题发出警告，在运行前发现问题
+
+**示例：**
+```csharp
+// ✅ 推荐：明确的可空性标记
+public record class ProcessingResult
+{
+    public required string ImagePath { get; init; }
+    public string? ErrorMessage { get; init; }  // 明确标记可空
+    public List<string>? Warnings { get; init; } // 明确标记可空
+}
+
+public class ImageProcessor
+{
+    // 参数明确标记可空性
+    public ProcessingResult Process(string imagePath, string? modelPath = null)
+    {
+        // 编译器会在此处要求 null 检查
+        if (modelPath is not null)
+        {
+            LoadModel(modelPath);
+        }
+        
+        return new ProcessingResult { ImagePath = imagePath };
+    }
+}
+```
+
+---
+
+## 14. 使用文件作用域类型实现真正封装
+
+### 14.1 基本原则
+
+- **工具类、辅助类保持在文件内私有**
+- 使用 `file` 关键字声明仅在当前文件可见的类型
+- 避免污染全局命名空间，帮助强制执行边界
+
+### 14.2 适用场景
+
+- 仅在特定文件内部使用的辅助类
+- 内部实现细节
+- 临时数据结构
+
+**示例：**
+```csharp
+namespace ZakYip.BarcodeReadabilityLab.Core.Services;
+
+// ✅ 公共服务接口
+public interface IImageValidator
+{
+    ValidationResult Validate(string path);
+}
+
+// ✅ 公共实现类
+public class ImageValidator : IImageValidator
+{
+    public ValidationResult Validate(string path)
+    {
+        var context = new ValidationContext(path);
+        return context.Execute();
+    }
+}
+
+// ✅ 文件作用域类型：仅在此文件内可见
+file class ValidationContext
+{
+    private readonly string _path;
+    
+    public ValidationContext(string path)
+    {
+        _path = path;
+    }
+    
+    public ValidationResult Execute()
+    {
+        // 验证逻辑
+        return new ValidationResult { IsValid = true };
+    }
+}
+```
+
+---
+
+## 15. 使用 record 处理不可变数据
+
+### 15.1 基本原则
+
+- **DTO 和只读数据优先使用 record**
+- record 提供值语义、自动实现相等性比较
+- record 是不可变数据的理想选择
+
+### 15.2 选择指南
+
+- **简单值对象**：使用 `record` 位置记录
+- **复杂数据模型**：使用 `record class` 配合 `required` 和 `init`
+- **小型事件载荷**：使用 `readonly record struct` 提高性能
+
+**示例：**
+```csharp
+// ✅ 简单值对象使用 record
+public record ImageMetadata(string Path, long Size, DateTime CreatedAt);
+
+// ✅ 复杂模型使用 record class
+public record class BarcodeAnalysisResult
+{
+    public required Guid AnalysisId { get; init; }
+    public required string ImagePath { get; init; }
+    public required DateTime AnalyzedAt { get; init; }
+    public required decimal Confidence { get; init; }
+    public string? DetectedType { get; init; }
+    public List<string>? Warnings { get; init; }
+}
+
+// ✅ 小型事件载荷使用 readonly record struct
+public readonly record struct ImageProcessedEventArgs(
+    string ImagePath,
+    bool IsSuccessful,
+    DateTime ProcessedAt
+);
+```
+
+---
+
+## 16. 保持方法专注且小巧
+
+### 16.1 基本原则
+
+- **一个方法 = 一个职责**
+- 方法应短小精悍，通常不超过 20-30 行
+- 较小的方法更易于阅读、测试和重用
+- 复杂逻辑拆分为多个小方法
+
+### 16.2 重构指南
+
+- 如果方法需要多层嵌套，考虑提取内部逻辑
+- 如果方法有多个职责，拆分为多个方法
+- 使用有意义的方法名清晰表达意图
+
+**示例：**
+```csharp
+// ❌ 避免：方法过大，职责不清
+public async Task<AnalysisResult> ProcessImageAsync(string imagePath)
+{
+    // 验证逻辑
+    if (string.IsNullOrEmpty(imagePath))
+        throw new ArgumentException("路径不能为空", nameof(imagePath));
+    
+    if (!File.Exists(imagePath))
+        throw new FileNotFoundException("文件不存在", imagePath);
+    
+    var fileInfo = new FileInfo(imagePath);
+    if (fileInfo.Length > MaxFileSize)
+        throw new InvalidOperationException("文件过大");
+    
+    // 加载模型
+    if (_model is null)
+    {
+        var modelPath = Path.Combine(_modelDirectory, "model.zip");
+        _model = await LoadModelAsync(modelPath);
+    }
+    
+    // 预处理图片
+    var image = await LoadImageAsync(imagePath);
+    var preprocessed = PreprocessImage(image);
+    
+    // 执行预测
+    var prediction = _model.Predict(preprocessed);
+    
+    // 后处理结果
+    return new AnalysisResult
+    {
+        Label = prediction.Label,
+        Confidence = prediction.Score
+    };
+}
+
+// ✅ 推荐：拆分为多个专注的方法
+public async Task<AnalysisResult> ProcessImageAsync(string imagePath)
+{
+    ValidateImagePath(imagePath);
+    await EnsureModelLoadedAsync();
+    
+    var preprocessedImage = await LoadAndPreprocessImageAsync(imagePath);
+    var prediction = PredictImage(preprocessedImage);
+    
+    return CreateAnalysisResult(prediction);
+}
+
+private void ValidateImagePath(string imagePath)
+{
+    if (string.IsNullOrEmpty(imagePath))
+        throw new ArgumentException("路径不能为空", nameof(imagePath));
+    
+    if (!File.Exists(imagePath))
+        throw new FileNotFoundException("文件不存在", imagePath);
+    
+    ValidateFileSize(imagePath);
+}
+
+private void ValidateFileSize(string imagePath)
+{
+    var fileInfo = new FileInfo(imagePath);
+    if (fileInfo.Length > MaxFileSize)
+        throw new InvalidOperationException("文件过大");
+}
+
+private async Task EnsureModelLoadedAsync()
+{
+    if (_model is null)
+    {
+        var modelPath = Path.Combine(_modelDirectory, "model.zip");
+        _model = await LoadModelAsync(modelPath);
+    }
+}
+
+private async Task<ProcessedImage> LoadAndPreprocessImageAsync(string imagePath)
+{
+    var image = await LoadImageAsync(imagePath);
+    return PreprocessImage(image);
+}
+
+private Prediction PredictImage(ProcessedImage image)
+{
+    return _model.Predict(image);
+}
+
+private AnalysisResult CreateAnalysisResult(Prediction prediction)
+{
+    return new AnalysisResult
+    {
+        Label = prediction.Label,
+        Confidence = prediction.Score
+    };
+}
+```
+
+---
+
+## 17. 不需要可变性时优先使用 readonly struct
+
+### 17.1 基本原则
+
+- **值类型不需要修改时，使用 `readonly struct`**
+- 防止意外更改并提高性能
+- 避免值类型的防御性拷贝
+
+### 17.2 适用场景
+
+- 不可变的值类型
+- 小型事件参数
+- 坐标、尺寸等简单数据结构
+
+**示例：**
+```csharp
+// ✅ 推荐：不可变的值类型使用 readonly struct
+public readonly struct ImageDimensions
+{
+    public int Width { get; init; }
+    public int Height { get; init; }
+    
+    public ImageDimensions(int width, int height)
+    {
+        Width = width;
+        Height = height;
+    }
+    
+    public int Area => Width * Height;
+}
+
+// ✅ 推荐：使用 readonly record struct 更简洁
+public readonly record struct Point(int X, int Y);
+
+public readonly record struct Rectangle(Point TopLeft, Point BottomRight)
+{
+    public int Width => BottomRight.X - TopLeft.X;
+    public int Height => BottomRight.Y - TopLeft.Y;
+}
+
+// ❌ 避免：可变的 struct 可能导致意外行为
+public struct MutablePoint
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+}
+```
+
+---
+
+## 18. 总结
 
 以上规范涵盖了本项目代码生成的核心要求。请在编写或生成代码时严格遵守这些规范，以确保代码库的高质量和一致性。
 
@@ -540,5 +879,11 @@ public class Validator
 - ✅ Core 层纯净，无基础设施依赖
 - ✅ 事件载荷类型名以 EventArgs 结尾
 - ✅ 异常和日志消息用中文
+- ✅ 使用 required + init 实现安全对象创建
+- ✅ 启用可空引用类型
+- ✅ 使用文件作用域类型保持封装
+- ✅ 优先使用 record 处理不可变数据
+- ✅ 保持方法专注且小巧
+- ✅ 优先使用 readonly struct
 
 如有疑问或需要调整规范，请及时沟通。
