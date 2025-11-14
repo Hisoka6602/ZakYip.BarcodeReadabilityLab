@@ -1,5 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Service.Models;
 
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+
 /// <summary>
 /// 训练任务响应模型（字段名使用小驼峰风格）
 /// </summary>
@@ -44,4 +46,9 @@ public record class TrainingJobResponse
     /// 训练任务备注说明（可选）
     /// </summary>
     public string? Remarks { get; init; }
+
+    /// <summary>
+    /// 模型评估指标（训练完成后可用）
+    /// </summary>
+    public ModelEvaluationMetrics? EvaluationMetrics { get; init; }
 }

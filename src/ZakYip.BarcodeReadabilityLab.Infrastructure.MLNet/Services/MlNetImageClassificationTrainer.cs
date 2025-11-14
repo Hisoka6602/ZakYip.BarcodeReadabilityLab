@@ -1,9 +1,13 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Services;
 
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML;
+using Microsoft.ML.Data;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
+using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Models;
 
 /// <summary>
 /// 训练用图像数据模型
@@ -36,7 +40,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
     }
 
     /// <inheritdoc />
-    public async Task<string> TrainAsync(
+    public async Task<TrainingResult> TrainAsync(
         string trainingRootDirectory,
         string outputModelDirectory,
         decimal? validationSplitRatio = null,
@@ -72,6 +76,13 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
             // 加载数据到 ML.NET
             var dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
 
+            // 分割数据为训练集和测试集
+            var splitRatio = validationSplitRatio ?? 0.2m;
+            var trainTestSplit = _mlContext.Data.TrainTestSplit(dataView, testFraction: (double)splitRatio);
+
+            _logger.LogInformation("数据集分割 => 训练集比例: {TrainRatio:P0}, 测试集比例: {TestRatio:P0}", 
+                1.0m - splitRatio, splitRatio);
+
             cancellationToken.ThrowIfCancellationRequested();
 
             // 报告进度：构建训练管道
@@ -85,8 +96,16 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
             // 报告进度：开始训练
             progressCallback?.ReportProgress(0.30m, "开始训练模型");
 
-            // 执行训练
-            var trainedModel = await Task.Run(() => pipeline.Fit(dataView), cancellationToken);
+            // 执行训练（使用训练集）
+            var trainedModel = await Task.Run(() => pipeline.Fit(trainTestSplit.TrainSet), cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // 报告进度：评估模型
+            progressCallback?.ReportProgress(0.80m, "评估模型性能");
+
+            // 在测试集上评估模型
+            var evaluationMetrics = EvaluateModel(trainedModel, trainTestSplit.TestSet, trainingData);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -94,15 +113,19 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
             progressCallback?.ReportProgress(0.90m, "训练完成，保存模型");
 
             // 保存模型
-            var modelFilePath = SaveModel(trainedModel, dataView.Schema, outputModelDirectory);
+            var modelFilePath = SaveModel(trainedModel, trainTestSplit.TrainSet.Schema, outputModelDirectory);
 
             // 报告进度：完成
             progressCallback?.ReportProgress(1.0m, "训练任务完成");
 
-            _logger.LogInformation("模型训练完成 => 模型路径: {ModelFilePath}, 训练样本数: {SampleCount}", 
-                modelFilePath, trainingData.Count);
+            _logger.LogInformation("模型训练完成 => 模型路径: {ModelFilePath}, 训练样本数: {SampleCount}, 准确率: {Accuracy:P2}", 
+                modelFilePath, trainingData.Count, evaluationMetrics.Accuracy);
 
-            return modelFilePath;
+            return new TrainingResult
+            {
+                ModelFilePath = modelFilePath,
+                EvaluationMetrics = evaluationMetrics
+            };
         }
         catch (OperationCanceledException)
         {
@@ -234,5 +257,203 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         }
 
         return modelFilePath;
+    }
+
+    /// <summary>
+    /// 评估模型性能
+    /// </summary>
+    private ModelEvaluationMetrics EvaluateModel(
+        ITransformer model, 
+        IDataView testSet,
+        List<TrainingImageData> allTrainingData)
+    {
+        // 在测试集上进行预测
+        var predictions = model.Transform(testSet);
+
+        // 计算多分类评估指标
+        var metrics = _mlContext.MulticlassClassification.Evaluate(predictions, labelColumnName: "Label");
+
+        _logger.LogInformation("模型评估指标 => 准确率: {Accuracy:P2}, 宏平均F1: {MacroF1:P2}, 微平均F1: {MicroF1:P2}, 对数损失: {LogLoss:F4}",
+            metrics.MacroAccuracy, 
+            metrics.MacroAccuracy > 0 ? 2 * metrics.MacroAccuracy / (1 + metrics.MacroAccuracy) : 0,
+            metrics.MicroAccuracy,
+            metrics.LogLoss);
+
+        // 获取所有唯一标签
+        var uniqueLabels = allTrainingData
+            .Select(d => d.Label)
+            .Distinct()
+            .OrderBy(l => l)
+            .ToList();
+
+        // 计算混淆矩阵
+        var confusionMatrix = metrics.ConfusionMatrix;
+        var confusionMatrixData = BuildConfusionMatrixData(confusionMatrix, uniqueLabels);
+        var confusionMatrixJson = JsonSerializer.Serialize(confusionMatrixData);
+
+        // 计算每个类别的指标
+        var perClassMetrics = CalculatePerClassMetrics(confusionMatrix, uniqueLabels);
+        var perClassMetricsJson = JsonSerializer.Serialize(perClassMetrics);
+
+        // 计算宏平均和微平均指标
+        var (macroPrecision, macroRecall, macroF1) = CalculateMacroAverageMetrics(perClassMetrics);
+        var (microPrecision, microRecall, microF1) = CalculateMicroAverageMetrics(confusionMatrix);
+
+        _logger.LogInformation("详细评估指标 => 宏平均: 精确率={MacroPrecision:P2}, 召回率={MacroRecall:P2}, F1={MacroF1:P2} | 微平均: 精确率={MicroPrecision:P2}, 召回率={MicroRecall:P2}, F1={MicroF1:P2}",
+            macroPrecision, macroRecall, macroF1, microPrecision, microRecall, microF1);
+
+        return new ModelEvaluationMetrics
+        {
+            Accuracy = (decimal)metrics.MacroAccuracy,
+            MacroPrecision = macroPrecision,
+            MacroRecall = macroRecall,
+            MacroF1Score = macroF1,
+            MicroPrecision = microPrecision,
+            MicroRecall = microRecall,
+            MicroF1Score = microF1,
+            LogLoss = (decimal)metrics.LogLoss,
+            ConfusionMatrixJson = confusionMatrixJson,
+            PerClassMetricsJson = perClassMetricsJson
+        };
+    }
+
+    /// <summary>
+    /// 构建混淆矩阵数据结构
+    /// </summary>
+    private Dictionary<string, object> BuildConfusionMatrixData(
+        ConfusionMatrix confusionMatrix,
+        List<string> labels)
+    {
+        var matrix = new List<List<int>>();
+        
+        for (var i = 0; i < confusionMatrix.NumberOfClasses; i++)
+        {
+            var row = new List<int>();
+            for (var j = 0; j < confusionMatrix.NumberOfClasses; j++)
+            {
+                row.Add((int)confusionMatrix.Counts[i][j]);
+            }
+            matrix.Add(row);
+        }
+
+        return new Dictionary<string, object>
+        {
+            ["labels"] = labels,
+            ["matrix"] = matrix
+        };
+    }
+
+    /// <summary>
+    /// 计算每个类别的精确率、召回率和 F1 分数
+    /// </summary>
+    private List<Dictionary<string, object>> CalculatePerClassMetrics(
+        ConfusionMatrix confusionMatrix,
+        List<string> labels)
+    {
+        var perClassMetrics = new List<Dictionary<string, object>>();
+
+        for (var i = 0; i < confusionMatrix.NumberOfClasses; i++)
+        {
+            var truePositives = confusionMatrix.Counts[i][i];
+            var falsePositives = 0.0;
+            var falseNegatives = 0.0;
+
+            // 计算假正例（该列其他行的和）
+            for (var j = 0; j < confusionMatrix.NumberOfClasses; j++)
+            {
+                if (j != i)
+                {
+                    falsePositives += confusionMatrix.Counts[j][i];
+                }
+            }
+
+            // 计算假负例（该行其他列的和）
+            for (var j = 0; j < confusionMatrix.NumberOfClasses; j++)
+            {
+                if (j != i)
+                {
+                    falseNegatives += confusionMatrix.Counts[i][j];
+                }
+            }
+
+            var precision = truePositives + falsePositives > 0 
+                ? truePositives / (truePositives + falsePositives) 
+                : 0.0;
+            
+            var recall = truePositives + falseNegatives > 0 
+                ? truePositives / (truePositives + falseNegatives) 
+                : 0.0;
+            
+            var f1Score = precision + recall > 0 
+                ? 2 * precision * recall / (precision + recall) 
+                : 0.0;
+
+            perClassMetrics.Add(new Dictionary<string, object>
+            {
+                ["label"] = labels[i],
+                ["precision"] = Math.Round(precision, 4),
+                ["recall"] = Math.Round(recall, 4),
+                ["f1Score"] = Math.Round(f1Score, 4),
+                ["support"] = (int)(truePositives + falseNegatives)
+            });
+        }
+
+        return perClassMetrics;
+    }
+
+    /// <summary>
+    /// 计算宏平均指标（每个类别指标的算术平均）
+    /// </summary>
+    private (decimal precision, decimal recall, decimal f1Score) CalculateMacroAverageMetrics(
+        List<Dictionary<string, object>> perClassMetrics)
+    {
+        if (perClassMetrics.Count == 0)
+            return (0m, 0m, 0m);
+
+        var avgPrecision = perClassMetrics.Average(m => Convert.ToDouble(m["precision"]));
+        var avgRecall = perClassMetrics.Average(m => Convert.ToDouble(m["recall"]));
+        var avgF1 = perClassMetrics.Average(m => Convert.ToDouble(m["f1Score"]));
+
+        return ((decimal)avgPrecision, (decimal)avgRecall, (decimal)avgF1);
+    }
+
+    /// <summary>
+    /// 计算微平均指标（全局统计）
+    /// </summary>
+    private (decimal precision, decimal recall, decimal f1Score) CalculateMicroAverageMetrics(
+        ConfusionMatrix confusionMatrix)
+    {
+        var totalTruePositives = 0.0;
+        var totalFalsePositives = 0.0;
+        var totalFalseNegatives = 0.0;
+
+        for (var i = 0; i < confusionMatrix.NumberOfClasses; i++)
+        {
+            var truePositives = confusionMatrix.Counts[i][i];
+            totalTruePositives += truePositives;
+
+            for (var j = 0; j < confusionMatrix.NumberOfClasses; j++)
+            {
+                if (j != i)
+                {
+                    totalFalsePositives += confusionMatrix.Counts[j][i];
+                    totalFalseNegatives += confusionMatrix.Counts[i][j];
+                }
+            }
+        }
+
+        var microPrecision = totalTruePositives + totalFalsePositives > 0
+            ? totalTruePositives / (totalTruePositives + totalFalsePositives)
+            : 0.0;
+
+        var microRecall = totalTruePositives + totalFalseNegatives > 0
+            ? totalTruePositives / (totalTruePositives + totalFalseNegatives)
+            : 0.0;
+
+        var microF1 = microPrecision + microRecall > 0
+            ? 2 * microPrecision * microRecall / (microPrecision + microRecall)
+            : 0.0;
+
+        return ((decimal)microPrecision, (decimal)microRecall, (decimal)microF1);
     }
 }

@@ -1,5 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 
+using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Models;
+
 /// <summary>
 /// 图像分类训练器契约
 /// </summary>
@@ -13,8 +15,8 @@ public interface IImageClassificationTrainer
     /// <param name="validationSplitRatio">验证集分割比例（0.0 到 1.0 之间，可选）</param>
     /// <param name="progressCallback">训练进度回调（可选）</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>训练完成后的模型文件路径</returns>
-    Task<string> TrainAsync(
+    /// <returns>训练结果，包含模型文件路径和评估指标</returns>
+    Task<TrainingResult> TrainAsync(
         string trainingRootDirectory,
         string outputModelDirectory,
         decimal? validationSplitRatio = null,
