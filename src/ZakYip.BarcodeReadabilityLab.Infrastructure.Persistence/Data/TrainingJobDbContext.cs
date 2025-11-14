@@ -59,6 +59,35 @@ public class TrainingJobDbContext : DbContext
             entity.Property(e => e.Remarks)
                 .HasMaxLength(1000);
 
+            // 评估指标属性配置
+            entity.Property(e => e.Accuracy)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MacroPrecision)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MacroRecall)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MacroF1Score)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MicroPrecision)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MicroRecall)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MicroF1Score)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.LogLoss)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.ConfusionMatrixJson);
+
+            entity.Property(e => e.PerClassMetricsJson);
+
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartTime);
         });

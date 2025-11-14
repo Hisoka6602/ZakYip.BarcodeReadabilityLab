@@ -54,4 +54,9 @@ public record class TrainingJob
     /// 训练任务备注说明（可选）
     /// </summary>
     public string? Remarks { get; init; }
+
+    /// <summary>
+    /// 模型评估指标（训练完成后可用）
+    /// </summary>
+    public ModelEvaluationMetrics? EvaluationMetrics { get; init; }
 }

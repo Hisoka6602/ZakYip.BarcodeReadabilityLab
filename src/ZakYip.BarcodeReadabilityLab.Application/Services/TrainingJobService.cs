@@ -83,7 +83,8 @@ public sealed class TrainingJobService : ITrainingJobService
             StartTime = trainingJob.StartTime,
             CompletedTime = trainingJob.CompletedTime,
             ErrorMessage = trainingJob.ErrorMessage,
-            Remarks = trainingJob.Remarks
+            Remarks = trainingJob.Remarks,
+            EvaluationMetrics = trainingJob.EvaluationMetrics
         };
     }
 
@@ -103,7 +104,8 @@ public sealed class TrainingJobService : ITrainingJobService
                 StartTime = job.StartTime,
                 CompletedTime = job.CompletedTime,
                 ErrorMessage = job.ErrorMessage,
-                Remarks = job.Remarks
+                Remarks = job.Remarks,
+                EvaluationMetrics = job.EvaluationMetrics
             })
             .ToList();
     }
@@ -189,7 +191,7 @@ public sealed class TrainingJobService : ITrainingJobService
     /// <summary>
     /// 更新任务状态为完成
     /// </summary>
-    internal async Task UpdateJobToCompleted(Guid jobId)
+    internal async Task UpdateJobToCompleted(Guid jobId, ModelEvaluationMetrics? evaluationMetrics = null)
     {
         using var scope = _scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
@@ -202,13 +204,14 @@ public sealed class TrainingJobService : ITrainingJobService
         {
             Status = TrainingJobState.Completed,
             Progress = 1.0m,
-            CompletedTime = DateTimeOffset.UtcNow
+            CompletedTime = DateTimeOffset.UtcNow,
+            EvaluationMetrics = evaluationMetrics
         };
 
         await repository.UpdateAsync(updatedJob);
 
-        _logger.LogInformation("训练任务已完成 => JobId: {JobId}, 状态: {Status}, 进度: {Progress:P0}", 
-            jobId, TrainingJobState.Completed, 1.0m);
+        _logger.LogInformation("训练任务已完成 => JobId: {JobId}, 状态: {Status}, 进度: {Progress:P0}, 准确率: {Accuracy:P2}", 
+            jobId, TrainingJobState.Completed, 1.0m, evaluationMetrics?.Accuracy ?? 0m);
     }
 
     /// <summary>

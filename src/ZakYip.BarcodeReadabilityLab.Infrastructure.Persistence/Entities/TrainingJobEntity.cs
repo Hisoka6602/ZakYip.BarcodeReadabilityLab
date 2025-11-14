@@ -58,10 +58,82 @@ public class TrainingJobEntity
     public string? Remarks { get; set; }
 
     /// <summary>
+    /// 准确率（训练完成后可用）
+    /// </summary>
+    public decimal? Accuracy { get; set; }
+
+    /// <summary>
+    /// 宏平均精确率（训练完成后可用）
+    /// </summary>
+    public decimal? MacroPrecision { get; set; }
+
+    /// <summary>
+    /// 宏平均召回率（训练完成后可用）
+    /// </summary>
+    public decimal? MacroRecall { get; set; }
+
+    /// <summary>
+    /// 宏平均 F1 分数（训练完成后可用）
+    /// </summary>
+    public decimal? MacroF1Score { get; set; }
+
+    /// <summary>
+    /// 微平均精确率（训练完成后可用）
+    /// </summary>
+    public decimal? MicroPrecision { get; set; }
+
+    /// <summary>
+    /// 微平均召回率（训练完成后可用）
+    /// </summary>
+    public decimal? MicroRecall { get; set; }
+
+    /// <summary>
+    /// 微平均 F1 分数（训练完成后可用）
+    /// </summary>
+    public decimal? MicroF1Score { get; set; }
+
+    /// <summary>
+    /// 对数损失（训练完成后可用）
+    /// </summary>
+    public decimal? LogLoss { get; set; }
+
+    /// <summary>
+    /// 混淆矩阵 JSON（训练完成后可用）
+    /// </summary>
+    public string? ConfusionMatrixJson { get; set; }
+
+    /// <summary>
+    /// 每个类别的评估指标 JSON（训练完成后可用）
+    /// </summary>
+    public string? PerClassMetricsJson { get; set; }
+
+    /// <summary>
     /// 转换为领域模型
     /// </summary>
     public TrainingJob ToModel()
     {
+        ModelEvaluationMetrics? evaluationMetrics = null;
+
+        // 如果有评估指标数据，构建评估指标对象
+        if (Accuracy.HasValue && MacroPrecision.HasValue && MacroRecall.HasValue && 
+            MacroF1Score.HasValue && MicroPrecision.HasValue && MicroRecall.HasValue && 
+            MicroF1Score.HasValue && !string.IsNullOrWhiteSpace(ConfusionMatrixJson))
+        {
+            evaluationMetrics = new ModelEvaluationMetrics
+            {
+                Accuracy = Accuracy.Value,
+                MacroPrecision = MacroPrecision.Value,
+                MacroRecall = MacroRecall.Value,
+                MacroF1Score = MacroF1Score.Value,
+                MicroPrecision = MicroPrecision.Value,
+                MicroRecall = MicroRecall.Value,
+                MicroF1Score = MicroF1Score.Value,
+                LogLoss = LogLoss,
+                ConfusionMatrixJson = ConfusionMatrixJson,
+                PerClassMetricsJson = PerClassMetricsJson
+            };
+        }
+
         return new TrainingJob
         {
             JobId = JobId,
@@ -73,7 +145,8 @@ public class TrainingJobEntity
             StartTime = StartTime,
             CompletedTime = CompletedTime,
             ErrorMessage = ErrorMessage,
-            Remarks = Remarks
+            Remarks = Remarks,
+            EvaluationMetrics = evaluationMetrics
         };
     }
 
@@ -93,7 +166,17 @@ public class TrainingJobEntity
             StartTime = model.StartTime,
             CompletedTime = model.CompletedTime,
             ErrorMessage = model.ErrorMessage,
-            Remarks = model.Remarks
+            Remarks = model.Remarks,
+            Accuracy = model.EvaluationMetrics?.Accuracy,
+            MacroPrecision = model.EvaluationMetrics?.MacroPrecision,
+            MacroRecall = model.EvaluationMetrics?.MacroRecall,
+            MacroF1Score = model.EvaluationMetrics?.MacroF1Score,
+            MicroPrecision = model.EvaluationMetrics?.MicroPrecision,
+            MicroRecall = model.EvaluationMetrics?.MicroRecall,
+            MicroF1Score = model.EvaluationMetrics?.MicroF1Score,
+            LogLoss = model.EvaluationMetrics?.LogLoss,
+            ConfusionMatrixJson = model.EvaluationMetrics?.ConfusionMatrixJson,
+            PerClassMetricsJson = model.EvaluationMetrics?.PerClassMetricsJson
         };
     }
 }

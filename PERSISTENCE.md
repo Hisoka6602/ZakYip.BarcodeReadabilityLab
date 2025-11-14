@@ -85,7 +85,17 @@ CREATE TABLE "TrainingJobs" (
     "StartTime" TEXT NOT NULL,
     "CompletedTime" TEXT NULL,
     "ErrorMessage" TEXT NULL,
-    "Remarks" TEXT NULL
+    "Remarks" TEXT NULL,
+    "Accuracy" TEXT NULL,
+    "MacroPrecision" TEXT NULL,
+    "MacroRecall" TEXT NULL,
+    "MacroF1Score" TEXT NULL,
+    "MicroPrecision" TEXT NULL,
+    "MicroRecall" TEXT NULL,
+    "MicroF1Score" TEXT NULL,
+    "LogLoss" TEXT NULL,
+    "ConfusionMatrixJson" TEXT NULL,
+    "PerClassMetricsJson" TEXT NULL
 );
 
 CREATE INDEX "IX_TrainingJobs_Status" ON "TrainingJobs" ("Status");
@@ -103,6 +113,19 @@ CREATE INDEX "IX_TrainingJobs_StartTime" ON "TrainingJobs" ("StartTime");
 | Status | INTEGER | 任务状态（1=排队中, 2=运行中, 3=已完成, 4=失败, 5=已取消） |
 | Progress | DECIMAL | 进度百分比（0.0-1.0） |
 | StartTime | TEXT | 任务开始时间（ISO 8601） |
+| CompletedTime | TEXT | 任务完成时间（ISO 8601，可选） |
+| ErrorMessage | TEXT | 错误信息（失败时填充） |
+| Remarks | TEXT | 备注说明 |
+| Accuracy | DECIMAL | 模型准确率（训练完成后填充） |
+| MacroPrecision | DECIMAL | 宏平均精确率（训练完成后填充） |
+| MacroRecall | DECIMAL | 宏平均召回率（训练完成后填充） |
+| MacroF1Score | DECIMAL | 宏平均 F1 分数（训练完成后填充） |
+| MicroPrecision | DECIMAL | 微平均精确率（训练完成后填充） |
+| MicroRecall | DECIMAL | 微平均召回率（训练完成后填充） |
+| MicroF1Score | DECIMAL | 微平均 F1 分数（训练完成后填充） |
+| LogLoss | DECIMAL | 对数损失（训练完成后填充） |
+| ConfusionMatrixJson | TEXT | 混淆矩阵 JSON（训练完成后填充） |
+| PerClassMetricsJson | TEXT | 每个类别的详细指标 JSON（训练完成后填充） |
 | CompletedTime | TEXT | 任务完成时间（ISO 8601，可选） |
 | ErrorMessage | TEXT | 错误信息（失败时填充） |
 | Remarks | TEXT | 备注说明 |
@@ -139,13 +162,25 @@ GET /api/training/status/{jobId}
 ```json
 {
   "jobId": "guid",
-  "state": "运行中",
-  "progress": 0.5,
-  "message": "训练任务正在执行",
+  "state": "已完成",
+  "progress": 1.0,
+  "message": "训练任务已完成",
   "startTime": "2024-01-01T10:00:00Z",
-  "completedTime": null,
+  "completedTime": "2024-01-01T10:15:00Z",
   "errorMessage": null,
-  "remarks": "训练任务描述"
+  "remarks": "训练任务描述",
+  "evaluationMetrics": {
+    "accuracy": 0.95,
+    "macroPrecision": 0.94,
+    "macroRecall": 0.93,
+    "macroF1Score": 0.935,
+    "microPrecision": 0.95,
+    "microRecall": 0.95,
+    "microF1Score": 0.95,
+    "logLoss": 0.15,
+    "confusionMatrixJson": "{\"labels\":[\"BlurryOrOutOfFocus\",\"Truncated\"],\"matrix\":[[45,5],[3,47]]}",
+    "perClassMetricsJson": "[{\"label\":\"BlurryOrOutOfFocus\",\"precision\":0.9375,\"recall\":0.9,\"f1Score\":0.9184,\"support\":50}]"
+  }
 }
 ```
 

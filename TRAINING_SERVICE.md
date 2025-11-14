@@ -10,7 +10,8 @@
 2. **状态追踪**: 实时追踪训练任务状态（排队中、运行中、已完成、失败）
 3. **版本化模型**: 训练完成后自动保存带时间戳的模型文件
 4. **模型热切换**: 训练完成后自动更新当前在线模型，无需重启服务
-5. **中文日志**: 所有日志和错误信息使用中文，便于调试和监控
+5. **模型评估指标**: 训练完成后自动计算准确率、召回率、F1 分数、混淆矩阵等评估指标
+6. **中文日志**: 所有日志和错误信息使用中文，便于调试和监控
 
 ## 训练数据结构
 
@@ -84,14 +85,38 @@
 ```json
 {
   "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "status": "Running",
-  "progress": 0.5,
+  "status": "Completed",
+  "progress": 1.0,
   "startTime": "2024-01-01T10:00:00Z",
-  "completedTime": null,
+  "completedTime": "2024-01-01T10:15:00Z",
   "errorMessage": null,
-  "remarks": "第一次训练"
+  "remarks": "第一次训练",
+  "evaluationMetrics": {
+    "accuracy": 0.95,
+    "macroPrecision": 0.94,
+    "macroRecall": 0.93,
+    "macroF1Score": 0.935,
+    "microPrecision": 0.95,
+    "microRecall": 0.95,
+    "microF1Score": 0.95,
+    "logLoss": 0.15,
+    "confusionMatrixJson": "{\"labels\":[\"BlurryOrOutOfFocus\",\"Truncated\"],\"matrix\":[[45,5],[3,47]]}",
+    "perClassMetricsJson": "[{\"label\":\"BlurryOrOutOfFocus\",\"precision\":0.9375,\"recall\":0.9,\"f1Score\":0.9184,\"support\":50}]"
+  }
 }
 ```
+
+**评估指标说明**:
+- `accuracy`: 准确率，正确分类的样本占总样本的比例
+- `macroPrecision`: 宏平均精确率，所有类别精确率的算术平均值
+- `macroRecall`: 宏平均召回率，所有类别召回率的算术平均值
+- `macroF1Score`: 宏平均 F1 分数，所有类别 F1 分数的算术平均值
+- `microPrecision`: 微平均精确率，全局统计的精确率
+- `microRecall`: 微平均召回率，全局统计的召回率
+- `microF1Score`: 微平均 F1 分数，全局统计的 F1 分数
+- `logLoss`: 对数损失，评估模型预测概率的质量（值越小越好）
+- `confusionMatrixJson`: 混淆矩阵的 JSON 表示
+- `perClassMetricsJson`: 每个类别的详细评估指标（精确率、召回率、F1、支持数）
 
 **状态说明**:
 - `Queued` (1): 排队中
@@ -219,6 +244,7 @@ await connection.InvokeAsync("SubscribeToJob", jobId);
 | 0.15 | 加载训练数据到内存 |
 | 0.25 | 构建训练管道 |
 | 0.30 | 开始训练模型 |
+| 0.80 | 评估模型性能 |
 | 0.90 | 训练完成，保存模型 |
 | 1.00 | 训练任务完成 |
 
@@ -345,8 +371,10 @@ curl http://localhost:5000/api/training-job/status/3fa85f64-5717-4562-b3fc-2c963
 ## 未来改进
 
 1. ~~支持训练进度实时更新~~ (已完成)
-2. 支持训练任务取消
-3. 支持多个训练任务并发执行
-4. 添加训练参数配置（学习率、训练轮数等）
-5. 添加模型评估指标（准确率、召回率等）
+2. ~~添加模型评估指标（准确率、召回率等）~~ (已完成)
+3. 支持训练任务取消
+4. 支持多个训练任务并发执行
+5. 添加训练参数配置（学习率、训练轮数等）
 6. 支持训练过程中的指标监控（损失函数值、验证集准确率等）
+7. 添加混淆矩阵可视化界面
+8. 支持导出详细的评估报告

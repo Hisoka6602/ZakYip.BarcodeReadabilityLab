@@ -87,18 +87,18 @@ public sealed class TrainingWorker : BackgroundService
             var progressCallback = new TrainingProgressCallback(jobId, _trainingJobService, _progressNotifier, _logger);
 
             // 调用训练器执行训练
-            var modelFilePath = await _trainer.TrainAsync(
+            var trainingResult = await _trainer.TrainAsync(
                 request.TrainingRootDirectory,
                 request.OutputModelDirectory,
                 request.ValidationSplitRatio,
                 progressCallback,
                 cancellationToken);
 
-            _logger.LogInformation("训练任务完成，JobId: {JobId}, 模型文件: {ModelFilePath}",
-                jobId, modelFilePath);
+            _logger.LogInformation("训练任务完成，JobId: {JobId}, 模型文件: {ModelFilePath}, 准确率: {Accuracy:P2}",
+                jobId, trainingResult.ModelFilePath, trainingResult.EvaluationMetrics.Accuracy);
 
-            // 更新任务状态为完成
-            await _trainingJobService.UpdateJobToCompleted(jobId);
+            // 更新任务状态为完成，并保存评估指标
+            await _trainingJobService.UpdateJobToCompleted(jobId, trainingResult.EvaluationMetrics);
         }
         catch (OperationCanceledException)
         {
