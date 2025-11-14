@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 
 /// <summary>
@@ -50,13 +51,20 @@ public sealed class DirectoryMonitoringService : IDirectoryMonitoringService, ID
 
             if (string.IsNullOrWhiteSpace(watchDirectory))
             {
-                throw new InvalidOperationException("监控目录路径未配置");
+                throw new ConfigurationException("监控目录路径未配置", "CONFIG_WATCH_DIR_EMPTY");
             }
 
             if (!Directory.Exists(watchDirectory))
             {
                 _logger.LogWarning("监控目录不存在，正在创建：{WatchDirectory}", watchDirectory);
-                Directory.CreateDirectory(watchDirectory);
+                try
+                {
+                    Directory.CreateDirectory(watchDirectory);
+                }
+                catch (Exception ex)
+                {
+                    throw new ConfigurationException($"无法创建监控目录：{watchDirectory}", "CONFIG_WATCH_DIR_CREATE_FAILED", ex);
+                }
             }
 
             _logger.LogInformation("开始启动目录监控服务，监控目录: {WatchDirectory}", watchDirectory);
@@ -77,8 +85,8 @@ public sealed class DirectoryMonitoringService : IDirectoryMonitoringService, ID
             _watcher.EnableRaisingEvents = true;
             _isRunning = true;
 
-            _logger.LogInformation("目录监控服务已启动，监控目录: {WatchDirectory}, 递归监控: {IsRecursive}",
-                watchDirectory, options.IsRecursive);
+            _logger.LogInformation("目录监控服务已启动，配置 => 监控目录: {WatchDirectory}, 递归监控: {IsRecursive}, 置信度阈值: {ConfidenceThreshold}",
+                watchDirectory, options.IsRecursive, options.ConfidenceThreshold);
 
             return Task.CompletedTask;
         }
@@ -149,7 +157,7 @@ public sealed class DirectoryMonitoringService : IDirectoryMonitoringService, ID
     private void OnWatcherError(object sender, ErrorEventArgs e)
     {
         var exception = e.GetException();
-        _logger.LogError(exception, "目录监控发生错误");
+        _logger.LogError(exception, "目录监控发生错误，错误类型: {ExceptionType}", exception?.GetType().Name);
     }
 
     /// <summary>
@@ -208,15 +216,20 @@ public sealed class DirectoryMonitoringService : IDirectoryMonitoringService, ID
             var updatedResult = result with { IsAboveThreshold = isAboveThreshold };
 
             _logger.LogInformation(
-                "图片分析完成，文件: {FilePath}, 是否已分析: {IsAnalyzed}, 原因: {Reason}, 置信度: {Confidence}, 是否达标: {IsAboveThreshold}",
+                "图片分析完成 => 文件: {FilePath}, 已分析: {IsAnalyzed}, 原因: {Reason}, 置信度: {Confidence:P2}, 达标: {IsAboveThreshold}",
                 filePath, updatedResult.IsAnalyzed, updatedResult.Reason, updatedResult.Confidence, updatedResult.IsAboveThreshold);
 
             // 根据条件决定是否调用路由器
             await _router.RouteAsync(sample, updatedResult);
         }
+        catch (AnalysisException ex)
+        {
+            _logger.LogError(ex, "分析图片文件失败 => 文件: {FilePath}, 错误代码: {ErrorCode}", filePath, ex.ErrorCode);
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "处理图片文件时发生错误：{FilePath}", filePath);
+            _logger.LogError(ex, "处理图片文件时发生未预期错误 => 文件: {FilePath}, 错误类型: {ExceptionType}", 
+                filePath, ex.GetType().Name);
             // 单个文件出错不影响其他文件处理，仅记录日志
         }
         finally

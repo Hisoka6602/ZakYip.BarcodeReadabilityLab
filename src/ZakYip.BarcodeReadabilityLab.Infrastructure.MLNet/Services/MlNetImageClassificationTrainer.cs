@@ -2,6 +2,7 @@ namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.ML;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 
 /// <summary>
@@ -43,8 +44,8 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
     {
         ValidateParameters(trainingRootDirectory, outputModelDirectory);
 
-        _logger.LogInformation("开始训练任务，训练根目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}",
-            trainingRootDirectory, outputModelDirectory);
+        _logger.LogInformation("开始训练任务 => 训练根目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}, 验证比例: {ValidationSplitRatio}",
+            trainingRootDirectory, outputModelDirectory, validationSplitRatio ?? 0.0m);
 
         try
         {
@@ -52,11 +53,11 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
             // 扫描训练数据
             var trainingData = ScanTrainingData(trainingRootDirectory);
-            _logger.LogInformation("扫描到 {Count} 个训练样本", trainingData.Count);
+            _logger.LogInformation("扫描到训练样本 => 总数: {Count}, 标签分布详情见后续日志", trainingData.Count);
 
             if (trainingData.Count == 0)
             {
-                throw new InvalidOperationException("训练根目录中没有找到任何训练样本");
+                throw new TrainingException("训练根目录中没有找到任何训练样本", "NO_TRAINING_DATA");
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -79,19 +80,26 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
             // 保存模型
             var modelFilePath = SaveModel(trainedModel, dataView.Schema, outputModelDirectory);
 
-            _logger.LogInformation("模型训练完成，已保存到: {ModelFilePath}", modelFilePath);
+            _logger.LogInformation("模型训练完成 => 模型路径: {ModelFilePath}, 训练样本数: {SampleCount}", 
+                modelFilePath, trainingData.Count);
 
             return modelFilePath;
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("训练任务被取消");
+            _logger.LogWarning("训练任务被取消 => 目录: {TrainingRootDirectory}", trainingRootDirectory);
+            throw;
+        }
+        catch (TrainingException)
+        {
+            // 重新抛出自定义训练异常
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "训练任务失败");
-            throw new InvalidOperationException($"训练任务失败: {ex.Message}", ex);
+            _logger.LogError(ex, "训练任务失败 => 错误类型: {ExceptionType}, 目录: {TrainingRootDirectory}", 
+                ex.GetType().Name, trainingRootDirectory);
+            throw new TrainingException($"训练任务失败: {ex.Message}", "TRAINING_FAILED", ex);
         }
     }
 
@@ -101,13 +109,13 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
     private void ValidateParameters(string trainingRootDirectory, string outputModelDirectory)
     {
         if (string.IsNullOrWhiteSpace(trainingRootDirectory))
-            throw new ArgumentException("训练根目录路径不能为空", nameof(trainingRootDirectory));
+            throw new TrainingException("训练根目录路径不能为空", "TRAIN_DIR_EMPTY");
 
         if (string.IsNullOrWhiteSpace(outputModelDirectory))
-            throw new ArgumentException("输出模型目录路径不能为空", nameof(outputModelDirectory));
+            throw new TrainingException("输出模型目录路径不能为空", "OUTPUT_DIR_EMPTY");
 
         if (!Directory.Exists(trainingRootDirectory))
-            throw new DirectoryNotFoundException($"训练根目录不存在: {trainingRootDirectory}");
+            throw new TrainingException($"训练根目录不存在: {trainingRootDirectory}", "TRAIN_DIR_NOT_FOUND");
     }
 
     /// <summary>
@@ -131,7 +139,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
                 .Where(f => supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
                 .ToList();
 
-            _logger.LogInformation("标签 '{Label}' 包含 {Count} 个样本", label, imageFiles.Count);
+            _logger.LogInformation("标签分布 => 标签: {Label}, 样本数: {Count}", label, imageFiles.Count);
 
             foreach (var imageFile in imageFiles)
             {

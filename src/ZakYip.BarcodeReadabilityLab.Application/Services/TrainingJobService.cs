@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 
 /// <summary>
@@ -57,8 +58,8 @@ public sealed class TrainingJobService : ITrainingJobService
         // 加入队列
         _jobQueue.Enqueue((jobId, request));
 
-        _logger.LogInformation("训练任务已加入队列，JobId: {JobId}, 训练目录: {TrainingRootDirectory}",
-            jobId, request.TrainingRootDirectory);
+        _logger.LogInformation("训练任务已加入队列 => JobId: {JobId}, 训练目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}, 验证比例: {ValidationSplitRatio}",
+            jobId, request.TrainingRootDirectory, request.OutputModelDirectory, request.ValidationSplitRatio ?? 0.2m);
 
         return jobId;
     }
@@ -160,7 +161,7 @@ public sealed class TrainingJobService : ITrainingJobService
 
         await repository.UpdateAsync(updatedJob);
 
-        _logger.LogInformation("训练任务开始执行，JobId: {JobId}", jobId);
+        _logger.LogInformation("训练任务开始执行 => JobId: {JobId}, 状态: {Status}", jobId, TrainingJobState.Running);
     }
 
     /// <summary>
@@ -184,7 +185,8 @@ public sealed class TrainingJobService : ITrainingJobService
 
         await repository.UpdateAsync(updatedJob);
 
-        _logger.LogInformation("训练任务已完成，JobId: {JobId}", jobId);
+        _logger.LogInformation("训练任务已完成 => JobId: {JobId}, 状态: {Status}, 进度: {Progress:P0}", 
+            jobId, TrainingJobState.Completed, 1.0m);
     }
 
     /// <summary>
@@ -208,7 +210,8 @@ public sealed class TrainingJobService : ITrainingJobService
 
         await repository.UpdateAsync(updatedJob);
 
-        _logger.LogError("训练任务失败，JobId: {JobId}, 错误: {ErrorMessage}", jobId, errorMessage);
+        _logger.LogError("训练任务失败 => JobId: {JobId}, 状态: {Status}, 错误: {ErrorMessage}", 
+            jobId, TrainingJobState.Failed, errorMessage);
     }
 
     /// <summary>
@@ -233,19 +236,19 @@ public sealed class TrainingJobService : ITrainingJobService
     private void ValidateRequest(TrainingRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.TrainingRootDirectory))
-            throw new ArgumentException("训练根目录路径不能为空", nameof(request.TrainingRootDirectory));
+            throw new TrainingException("训练根目录路径不能为空", "TRAIN_DIR_EMPTY");
 
         if (string.IsNullOrWhiteSpace(request.OutputModelDirectory))
-            throw new ArgumentException("输出模型目录路径不能为空", nameof(request.OutputModelDirectory));
+            throw new TrainingException("输出模型目录路径不能为空", "OUTPUT_DIR_EMPTY");
 
         if (!Directory.Exists(request.TrainingRootDirectory))
-            throw new DirectoryNotFoundException($"训练根目录不存在: {request.TrainingRootDirectory}");
+            throw new TrainingException($"训练根目录不存在: {request.TrainingRootDirectory}", "TRAIN_DIR_NOT_FOUND");
 
         if (request.ValidationSplitRatio.HasValue)
         {
             var ratio = request.ValidationSplitRatio.Value;
             if (ratio < 0.0m || ratio > 1.0m)
-                throw new ArgumentException("验证集分割比例必须在 0.0 到 1.0 之间", nameof(request.ValidationSplitRatio));
+                throw new TrainingException("验证集分割比例必须在 0.0 到 1.0 之间", "INVALID_SPLIT_RATIO");
         }
     }
 }
