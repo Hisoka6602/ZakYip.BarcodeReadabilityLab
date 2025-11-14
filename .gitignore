@@ -1,0 +1,30 @@
+## Build Artifacts
+bin/
+obj/
+
+## User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## IDE
+.vs/
+.vscode/
+*.swp
+*.swo
+*~
+
+## NuGet
+*.nupkg
+*.snupkg
+packages/
+
+## Test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+## Others
+*.log
+*.tmp
+.DS_Store
