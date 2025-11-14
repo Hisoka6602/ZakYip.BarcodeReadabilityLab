@@ -273,15 +273,32 @@ noread-classifier-YYYYMMDD-HHmmss.zip
 
 ## 配置说明
 
-在 `appsettings.json` 中配置模型路径：
+在 `appsettings.json` 中配置模型路径和训练选项：
 
 ```json
 {
   "BarcodeMlModel": {
     "CurrentModelPath": "C:\\BarcodeImages\\Models\\noread-classifier-current.zip"
+  },
+  "TrainingOptions": {
+    "TrainingRootDirectory": "C:\\BarcodeImages\\TrainingData",
+    "OutputModelDirectory": "C:\\BarcodeImages\\Models",
+    "ValidationSplitRatio": 0.2,
+    "MaxConcurrentTrainingJobs": 2,
+    "EnableResourceMonitoring": true,
+    "ResourceMonitoringIntervalSeconds": 10
   }
 }
 ```
+
+### 训练配置项说明
+
+- `TrainingRootDirectory`: 训练数据根目录路径
+- `OutputModelDirectory`: 输出模型文件存放目录路径
+- `ValidationSplitRatio`: 验证集分割比例（0.0 到 1.0 之间）
+- `MaxConcurrentTrainingJobs`: 最大并发训练任务数量（默认值：1，建议值：2-4，取决于系统资源）
+- `EnableResourceMonitoring`: 是否启用资源监控（默认值：false，启用后会定期记录 CPU 和内存使用情况）
+- `ResourceMonitoringIntervalSeconds`: 资源监控间隔（秒）（默认值：5，建议值：10-30）
 
 ## 架构说明
 
@@ -304,9 +321,29 @@ noread-classifier-YYYYMMDD-HHmmss.zip
 1. 客户端调用 `/api/training-job/start` 启动训练任务
 2. `TrainingJobService` 生成任务 ID，将任务加入队列，返回任务 ID
 3. `TrainingWorker` 后台服务从队列中取出任务
-4. `TrainingWorker` 调用 `MlNetImageClassificationTrainer` 执行训练
-5. 训练完成后保存模型文件并更新 `current` 模型
-6. 更新任务状态为完成或失败
+4. `TrainingWorker` 等待获取训练槽位（通过 SemaphoreSlim 控制并发度）
+5. `TrainingWorker` 调用 `MlNetImageClassificationTrainer` 执行训练
+6. 训练完成后保存模型文件并更新 `current` 模型
+7. 释放训练槽位，更新任务状态为完成或失败
+
+### 并发训练机制
+
+- **并发控制**: 使用 `SemaphoreSlim` 控制同时执行的训练任务数量
+- **槽位管理**: 每个训练任务在执行前必须获取一个训练槽位，执行完成后释放槽位
+- **任务队列**: 当所有槽位都被占用时，新的训练任务会在队列中等待
+- **资源监控**: 可选启用资源监控，定期记录 CPU 和内存使用情况
+- **日志记录**: 详细记录训练任务的启动、执行、完成和槽位使用情况
+
+### 资源监控
+
+- **监控指标**: CPU 使用率、内存使用率、进程内存占用
+- **跨平台支持**: 支持 Windows 和 Linux 平台
+- **监控间隔**: 可配置监控间隔，默认为 5 秒
+- **日志输出**: 监控信息会定期输出到日志，包括：
+  - CPU 使用率（百分比）
+  - 内存使用率（百分比）
+  - 已用内存 / 总内存（MB）
+  - 运行中的训练任务数 / 最大并发数
 
 ### 推理与训练解耦
 
@@ -317,9 +354,18 @@ noread-classifier-YYYYMMDD-HHmmss.zip
 
 1. **训练时间**: 训练时间取决于样本数量和硬件性能，可能需要几分钟到几小时
 2. **资源占用**: 训练过程会占用较多 CPU 和内存资源
-3. **并发限制**: 当前实现为单线程处理，一次只能执行一个训练任务
-4. **错误处理**: 训练失败时会记录错误日志，可通过状态查询接口获取错误信息
-5. **数据验证**: 训练前会验证训练目录是否存在，是否包含有效的图像文件
+3. **并发训练**: 支持多个训练任务并发执行，通过 `MaxConcurrentTrainingJobs` 配置最大并发数量
+4. **资源监控**: 启用资源监控后，系统会定期记录 CPU 和内存使用情况，便于性能优化
+5. **错误处理**: 训练失败时会记录错误日志，可通过状态查询接口获取错误信息
+6. **数据验证**: 训练前会验证训练目录是否存在，是否包含有效的图像文件
+
+### 并发训练建议
+
+- **单核或双核 CPU**: 建议 `MaxConcurrentTrainingJobs` 设置为 1
+- **四核 CPU**: 建议 `MaxConcurrentTrainingJobs` 设置为 2
+- **八核或更多 CPU**: 建议 `MaxConcurrentTrainingJobs` 设置为 2-4
+- **内存限制**: 每个训练任务可能占用 2-4 GB 内存，请确保系统有足够的可用内存
+- **磁盘 I/O**: 并发训练会增加磁盘 I/O 压力，建议使用 SSD 提升性能
 
 ## 示例：使用 curl 调用 API
 
@@ -372,9 +418,11 @@ curl http://localhost:5000/api/training-job/status/3fa85f64-5717-4562-b3fc-2c963
 
 1. ~~支持训练进度实时更新~~ (已完成)
 2. ~~添加模型评估指标（准确率、召回率等）~~ (已完成)
-3. 支持训练任务取消
-4. 支持多个训练任务并发执行
-5. 添加训练参数配置（学习率、训练轮数等）
-6. 支持训练过程中的指标监控（损失函数值、验证集准确率等）
-7. 添加混淆矩阵可视化界面
-8. 支持导出详细的评估报告
+3. ~~支持多个训练任务并发执行~~ (已完成)
+4. ~~添加训练资源（CPU、内存）监控~~ (已完成)
+5. 支持训练任务取消
+6. 添加训练参数配置（学习率、训练轮数等）
+7. 支持训练过程中的指标监控（损失函数值、验证集准确率等）
+8. 添加混淆矩阵可视化界面
+9. 支持导出详细的评估报告
+10. 支持基于资源使用情况的智能调度
