@@ -100,6 +100,138 @@
 - `Failed` (4): 失败
 - `Cancelled` (5): 已取消
 
+### 3. 实时监控训练进度
+
+训练进度更新支持两种模式：**轮询模式**和**WebSocket 推送模式**。
+
+#### 3.1 轮询模式（HTTP 接口）
+
+客户端可以定期调用状态查询接口来获取最新进度：
+
+```bash
+# 每隔 5 秒查询一次训练状态
+while true; do
+  curl http://localhost:5000/api/training-job/status/3fa85f64-5717-4562-b3fc-2c963f66afa6
+  sleep 5
+done
+```
+
+**优点**：
+- 实现简单，无需特殊客户端支持
+- 兼容性好，适用于各种环境
+
+**缺点**：
+- 有延迟，实时性较差
+- 频繁轮询可能对服务器造成压力
+
+#### 3.2 WebSocket 推送模式（SignalR）
+
+通过 SignalR 实现实时推送，服务器主动推送进度更新。
+
+**SignalR Hub 端点**: `/hubs/training-progress`
+
+**JavaScript 客户端示例**:
+
+```javascript
+// 1. 安装 SignalR 客户端
+// npm install @microsoft/signalr
+
+import * as signalR from "@microsoft/signalr";
+
+// 2. 创建连接
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("http://localhost:5000/hubs/training-progress")
+    .withAutomaticReconnect()
+    .build();
+
+// 3. 监听进度更新事件
+connection.on("ProgressUpdated", (data) => {
+    console.log(`训练进度: ${(data.progress * 100).toFixed(1)}%`);
+    console.log(`消息: ${data.message || '无'}`);
+    console.log(`时间戳: ${data.timestamp}`);
+    
+    // 更新 UI
+    updateProgressBar(data.progress);
+});
+
+// 4. 启动连接
+await connection.start();
+
+// 5. 订阅特定训练任务
+const jobId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+await connection.invoke("SubscribeToJob", jobId);
+
+// 6. 完成后取消订阅
+// await connection.invoke("UnsubscribeFromJob", jobId);
+
+// 7. 断开连接
+// await connection.stop();
+```
+
+**C# 客户端示例**:
+
+```csharp
+using Microsoft.AspNetCore.SignalR.Client;
+
+// 1. 创建连接
+var connection = new HubConnectionBuilder()
+    .WithUrl("http://localhost:5000/hubs/training-progress")
+    .WithAutomaticReconnect()
+    .Build();
+
+// 2. 监听进度更新事件
+connection.On<object>("ProgressUpdated", (data) =>
+{
+    // 处理进度更新
+    Console.WriteLine($"收到进度更新: {data}");
+});
+
+// 3. 启动连接
+await connection.StartAsync();
+
+// 4. 订阅特定训练任务
+var jobId = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
+await connection.InvokeAsync("SubscribeToJob", jobId);
+
+// 5. 完成后取消订阅
+// await connection.InvokeAsync("UnsubscribeFromJob", jobId);
+
+// 6. 断开连接
+// await connection.StopAsync();
+```
+
+**推送消息格式**:
+
+```json
+{
+  "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "progress": 0.5,
+  "message": "开始训练模型",
+  "timestamp": "2024-01-01T10:00:00.000Z"
+}
+```
+
+**训练进度阶段说明**:
+
+| 进度值 | 阶段说明 |
+|--------|----------|
+| 0.05 | 开始扫描训练数据 |
+| 0.15 | 加载训练数据到内存 |
+| 0.25 | 构建训练管道 |
+| 0.30 | 开始训练模型 |
+| 0.90 | 训练完成，保存模型 |
+| 1.00 | 训练任务完成 |
+
+**优点**：
+- 实时性强，几乎零延迟
+- 服务器主动推送，无需客户端轮询
+- 支持双向通信
+
+**缺点**：
+- 需要客户端支持 WebSocket
+- 需要维护长连接
+
+
 ## 模型文件命名规则
 
 训练完成后，模型文件会保存到输出目录，文件名格式为：
@@ -212,8 +344,9 @@ curl http://localhost:5000/api/training-job/status/3fa85f64-5717-4562-b3fc-2c963
 
 ## 未来改进
 
-1. 支持训练进度实时更新
+1. ~~支持训练进度实时更新~~ (已完成)
 2. 支持训练任务取消
 3. 支持多个训练任务并发执行
 4. 添加训练参数配置（学习率、训练轮数等）
 5. 添加模型评估指标（准确率、召回率等）
+6. 支持训练过程中的指标监控（损失函数值、验证集准确率等）
