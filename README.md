@@ -38,15 +38,15 @@
 
 ### 本次更新
 
-- ♻️ 移除宿主层中的临时 `ImageMonitoringService`、`TrainingService` 与 `MLModelService` 实现，`TrainingController` 现直接复用应用层 `ITrainingJobService` 与配置默认值，彻底遵循“主机层仅负责接入”分层规范。
-- 🧱 精简 `Program.cs` 注册列表，仅保留目录监控 Worker 与 SignalR 通知器，杜绝遗留服务注册导致的重复执行或并行训练冲突。
-- 🧪 新增 `ZakYip.BarcodeReadabilityLab.Service.Tests` 单元测试项目，覆盖传统 `TrainingController` 的参数映射、状态查询与降级逻辑，整体行覆盖率可稳定迈过 80% 红线。
+- 📦 新增 `/api/models` Minimal API 组，支持下载当前激活模型、按版本下载历史模型以及通过 multipart/form-data 导入模型文件。
+- 🧾 引入 `ModelImportRequest`、`ModelImportResponse` 数据模型与上传文件命名清洗逻辑，自动将导入的模型注册为版本并可选激活。
+- 🧪 扩展 `IModelVersionService` 增加按 ID 查询能力，并补充 `ModelVersionServiceTests` 覆盖核心参数校验与仓储委托。
 
 ### 可继续完善
 
-- 📈 将 `dotnet test /p:CollectCoverage=true` 或 Coverlet 集成到 CI，固化 80% 覆盖率门槛并生成趋势报告。
-- 🔁 为 `ITrainingJobService` 提供真正的取消/重试机制，并在传统 API 中返回明确的降级提示。
-- 🌐 对 SignalR `TrainingProgressHub` 与目录监控 Worker 编写补充测试，覆盖实时推送与文件流转的边界场景。
+- 🔐 为模型导入/导出端点增加身份认证与操作审计，避免误用或恶意覆盖模型。
+- ✅ 引入端到端集成测试覆盖模型文件上传下载路径，验证二进制流与 HTTP 元数据。
+- 🗂️ 支持导入请求携带评估指标与备注模版，统一记录多环境模型来源。
 
 ### 核心文件结构一览
 
@@ -65,8 +65,8 @@ src/ZakYip.BarcodeReadabilityLab.Application/
 ├─ Services/TrainingRequest.cs       // 请求携带增强/平衡配置
 ├─ Services/TrainingJobService.cs    // 参数校验、日志与持久化增强/平衡信息
 ├─ Services/TrainingJobStatus.cs     // 状态对象暴露增强/平衡配置
-├─ Services/ModelVersionService.cs   // 模型版本注册、激活、回滚与多模型对比
-├─ Services/IModelVersionService.cs  // 模型版本管理服务契约
+├─ Services/ModelVersionService.cs   // 模型版本注册、激活、回滚、多模型对比与按 ID 查询
+├─ Services/IModelVersionService.cs  // 模型版本管理服务契约（含按 ID 查询）
 ├─ Services/ModelVersionRegistration.cs // 模型版本注册请求结构
 ├─ Workers/TrainingWorker.cs         // 调用训练器时传入增强/平衡参数并记录日志
 ├─ Extensions/ServiceCollectionExtensions.cs // 注册训练任务与模型版本服务
@@ -94,8 +94,11 @@ src/ZakYip.BarcodeReadabilityLab.Service/
 ├─ Controllers/TrainingController.cs // 传统 REST API：复用 ITrainingJobService，实现降级提示
 ├─ Models/StartTrainingRequest.cs    // API 请求可传入增强/平衡配置
 ├─ Models/TrainingJobResponse.cs     // 响应包含增强/平衡配置
+├─ Models/ModelImportRequest.cs      // 模型导入 multipart/form-data 请求体
+├─ Models/ModelImportResponse.cs     // 模型导入成功返回信息
 ├─ Services/SignalRTrainingProgressNotifier.cs // 通过 SignalR 广播训练进度
 ├─ Endpoints/TrainingEndpoints.cs    // 映射配置 & 返回增强信息
+├─ Endpoints/ModelEndpoints.cs       // 模型导入导出 Minimal API
 ├─ Program.cs                        // partial Program 便于 WebApplicationFactory 承载宿主
 ├─ appsettings.json                  // 增加默认的数据增强/平衡参数
 
@@ -109,7 +112,8 @@ tests/
 ├─ ZakYip.BarcodeReadabilityLab.Application.Tests/
 │  ├─ ZakYip.BarcodeReadabilityLab.Application.Tests.csproj // Application 层测试项目，引用 Core & Application
 │  ├─ Usings.cs                                 // 全局 using 引入 Moq/xUnit
-│  └─ TrainingJobServiceTests.cs                // 覆盖训练服务入队、验证与状态迁移逻辑
+│  ├─ TrainingJobServiceTests.cs                // 覆盖训练服务入队、验证与状态迁移逻辑
+│  └─ ModelVersionServiceTests.cs               // 验证模型版本服务按 ID 查询与参数约束
 ├─ ZakYip.BarcodeReadabilityLab.IntegrationTests/
 │  ├─ ZakYip.BarcodeReadabilityLab.IntegrationTests.csproj // 集成测试项目，引用 Service 层与基础设施实现
 │  ├─ CustomWebApplicationFactory.cs            // 自定义宿主：替换 DbContext、停用目录监控、注入假训练器
@@ -744,12 +748,74 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/training/status/$jobId" -Metho
    - 当 `state` 为 "已完成" 时，训练成功
    - 当 `state` 为 "失败" 时，查看 `errorMessage` 了解失败原因
 
-### 注意事项
+### 训练注意事项
 
 - 所有响应的 JSON 字段名使用小驼峰命名风格（camelCase）
 - 训练是长时间任务，不会阻塞 API 调用
 - 服务会持续执行目录监控和推理逻辑，与 API 调用互不干扰
 - 建议使用轮询方式定期查询训练状态，避免频繁请求
+
+### 模型管理 API
+
+#### 1. 下载当前激活模型
+
+- **端点：** `GET /api/models/current/download`
+- **描述：** 返回当前在线推理所使用的模型二进制文件（通常为 `.zip`）。
+- **响应：** `application/octet-stream`，文件名与服务器当前模型一致。
+
+```bash
+curl -OJ http://localhost:5000/api/models/current/download
+```
+
+#### 2. 按版本下载模型
+
+- **端点：** `GET /api/models/{versionId}/download`
+- **描述：** 根据模型版本标识下载指定的历史模型文件。
+- **路径参数：** `versionId` 为模型版本的 GUID。
+- **响应：** `application/octet-stream`。若版本不存在则返回 `404`。
+
+```bash
+curl -OJ http://localhost:5000/api/models/4fd2b69f-09c0-4ee7-a3d5-1b8d9f221234/download
+```
+
+#### 3. 导入模型文件
+
+- **端点：** `POST /api/models/import`
+- **描述：** 通过 `multipart/form-data` 上传模型文件，并自动注册模型版本元数据。
+- **请求体字段：**
+  - `modelFile` (**必填**)：模型压缩包文件（推荐 `.zip`）。
+  - `versionName` (可选)：模型版本名称；未填时自动使用文件名+时间戳。
+  - `deploymentSlot` (可选)：部署槽位，默认 `Production`。
+  - `trafficPercentage` (可选)：A/B 测试流量占比（0~1）。
+  - `notes` (可选)：模型备注信息。
+  - `setAsActive` (可选)：是否立即激活导入模型，默认 `true`。
+- **成功响应：** `201 Created`，返回 `ModelImportResponse`。
+
+```bash
+curl -X POST http://localhost:5000/api/models/import \
+  -H "Accept: application/json" \
+  -F "modelFile=@noread-classifier.zip" \
+  -F "versionName=noread-prod" \
+  -F "deploymentSlot=Production" \
+  -F "setAsActive=true"
+```
+
+**响应示例（201 Created）：**
+
+```json
+{
+  "versionId": "2b5a27d7-32ba-4d52-9f6c-9f23e8437c2f",
+  "versionName": "noread-prod",
+  "modelPath": "C:\\BarcodeImages\\Models\\noread-prod-20240501-153045.zip",
+  "isActive": true
+}
+```
+
+### 模型管理注意事项
+
+- 模型导入会将文件保存到 `BarcodeReadabilityService:ModelPath` 指定目录，并根据 `setAsActive` 更新在线模型。
+- 若上传文件与现有名称重复，会自动追加时间戳确保文件不被覆盖。
+- 下载端点使用二进制流返回数据，请使用 `curl -O/-J` 或浏览器另存为保持文件完整。
 
 ## 本次更新概览（2024-05-08）
 
