@@ -55,6 +55,9 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
             TrainingRootDirectory = request.TrainingRootDirectory,
             OutputModelDirectory = request.OutputModelDirectory,
             ValidationSplitRatio = request.ValidationSplitRatio,
+            LearningRate = request.LearningRate,
+            Epochs = request.Epochs,
+            BatchSize = request.BatchSize,
             Status = TrainingJobState.Queued,
             Progress = 0.0m,
             StartTime = DateTimeOffset.UtcNow,
@@ -71,8 +74,15 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
         // 加入队列
         _jobQueue.Enqueue((jobId, request));
 
-        _logger.LogInformation("训练任务已加入队列 => JobId: {JobId}, 训练目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}, 验证比例: {ValidationSplitRatio}",
-            jobId, request.TrainingRootDirectory, request.OutputModelDirectory, request.ValidationSplitRatio ?? 0.2m);
+        _logger.LogInformation(
+            "训练任务已加入队列 => JobId: {JobId}, 训练目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}, 验证比例: {ValidationSplitRatio}, 学习率: {LearningRate}, Epochs: {Epochs}, BatchSize: {BatchSize}",
+            jobId,
+            request.TrainingRootDirectory,
+            request.OutputModelDirectory,
+            request.ValidationSplitRatio ?? 0.2m,
+            request.LearningRate,
+            request.Epochs,
+            request.BatchSize);
 
         return jobId;
     }
@@ -93,6 +103,9 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
             JobId = trainingJob.JobId,
             Status = MapToTrainingStatus(trainingJob.Status),
             Progress = trainingJob.Progress,
+            LearningRate = trainingJob.LearningRate,
+            Epochs = trainingJob.Epochs,
+            BatchSize = trainingJob.BatchSize,
             StartTime = trainingJob.StartTime,
             CompletedTime = trainingJob.CompletedTime,
             ErrorMessage = trainingJob.ErrorMessage,
@@ -114,6 +127,9 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
                 JobId = job.JobId,
                 Status = MapToTrainingStatus(job.Status),
                 Progress = job.Progress,
+                LearningRate = job.LearningRate,
+                Epochs = job.Epochs,
+                BatchSize = job.BatchSize,
                 StartTime = job.StartTime,
                 CompletedTime = job.CompletedTime,
                 ErrorMessage = job.ErrorMessage,
@@ -323,6 +339,15 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
             if (ratio < 0.0m || ratio > 1.0m)
                 throw new TrainingException("验证集分割比例必须在 0.0 到 1.0 之间", "INVALID_SPLIT_RATIO");
         }
+
+        if (request.LearningRate <= 0m || request.LearningRate > 1m)
+            throw new TrainingException("学习率必须在 0 到 1 之间（不含 0）", "INVALID_LEARNING_RATE");
+
+        if (request.Epochs < 1 || request.Epochs > 500)
+            throw new TrainingException("Epoch 数必须在 1 到 500 之间", "INVALID_EPOCHS");
+
+        if (request.BatchSize < 1 || request.BatchSize > 512)
+            throw new TrainingException("Batch Size 必须在 1 到 512 之间", "INVALID_BATCH_SIZE");
     }
 
     /// <summary>

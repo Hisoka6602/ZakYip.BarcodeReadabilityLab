@@ -26,6 +26,21 @@ public record class TrainingJob
     public decimal? ValidationSplitRatio { get; init; }
 
     /// <summary>
+    /// 学习率
+    /// </summary>
+    public required decimal LearningRate { get; init; }
+
+    /// <summary>
+    /// 训练轮数（Epoch）
+    /// </summary>
+    public required int Epochs { get; init; }
+
+    /// <summary>
+    /// 批大小（Batch Size）
+    /// </summary>
+    public required int BatchSize { get; init; }
+
+    /// <summary>
     /// 训练任务状态
     /// </summary>
     public required TrainingJobState Status { get; init; }

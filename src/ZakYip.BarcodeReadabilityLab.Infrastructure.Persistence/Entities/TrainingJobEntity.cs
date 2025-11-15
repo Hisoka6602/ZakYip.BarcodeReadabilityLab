@@ -28,6 +28,21 @@ public class TrainingJobEntity
     public decimal? ValidationSplitRatio { get; set; }
 
     /// <summary>
+    /// 学习率
+    /// </summary>
+    public decimal LearningRate { get; set; }
+
+    /// <summary>
+    /// 训练轮数（Epoch）
+    /// </summary>
+    public int Epochs { get; set; }
+
+    /// <summary>
+    /// 批大小（Batch Size）
+    /// </summary>
+    public int BatchSize { get; set; }
+
+    /// <summary>
     /// 训练任务状态
     /// </summary>
     public TrainingJobState Status { get; set; }
@@ -140,6 +155,9 @@ public class TrainingJobEntity
             TrainingRootDirectory = TrainingRootDirectory,
             OutputModelDirectory = OutputModelDirectory,
             ValidationSplitRatio = ValidationSplitRatio,
+            LearningRate = LearningRate,
+            Epochs = Epochs,
+            BatchSize = BatchSize,
             Status = Status,
             Progress = Progress,
             StartTime = StartTime,
@@ -161,6 +179,9 @@ public class TrainingJobEntity
             TrainingRootDirectory = model.TrainingRootDirectory,
             OutputModelDirectory = model.OutputModelDirectory,
             ValidationSplitRatio = model.ValidationSplitRatio,
+            LearningRate = model.LearningRate,
+            Epochs = model.Epochs,
+            BatchSize = model.BatchSize,
             Status = model.Status,
             Progress = model.Progress,
             StartTime = model.StartTime,

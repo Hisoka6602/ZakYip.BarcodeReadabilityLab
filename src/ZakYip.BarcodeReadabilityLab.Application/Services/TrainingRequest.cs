@@ -21,6 +21,21 @@ public record class TrainingRequest
     public decimal? ValidationSplitRatio { get; init; }
 
     /// <summary>
+    /// 学习率（大于 0 的小数）
+    /// </summary>
+    public required decimal LearningRate { get; init; }
+
+    /// <summary>
+    /// 训练轮数（Epoch，正整数）
+    /// </summary>
+    public required int Epochs { get; init; }
+
+    /// <summary>
+    /// 批大小（Batch Size，正整数）
+    /// </summary>
+    public required int BatchSize { get; init; }
+
+    /// <summary>
     /// 训练任务备注说明（可选）
     /// </summary>
     public string? Remarks { get; init; }

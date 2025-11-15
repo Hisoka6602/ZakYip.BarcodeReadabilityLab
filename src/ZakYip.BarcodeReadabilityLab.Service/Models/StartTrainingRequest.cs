@@ -12,6 +12,9 @@ namespace ZakYip.BarcodeReadabilityLab.Service.Models;
 ///   "trainingRootDirectory": "C:\\BarcodeImages\\Training",
 ///   "outputModelDirectory": "C:\\Models\\Output",
 ///   "validationSplitRatio": 0.2,
+///   "learningRate": 0.01,
+///   "epochs": 50,
+///   "batchSize": 20,
 ///   "remarks": "第一次训练测试"
 /// }
 /// </example>
@@ -34,6 +37,24 @@ public record class StartTrainingRequest
     /// </summary>
     /// <example>0.2</example>
     public decimal? ValidationSplitRatio { get; init; }
+
+    /// <summary>
+    /// 学习率（大于 0 的小数，可选）
+    /// </summary>
+    /// <example>0.01</example>
+    public decimal? LearningRate { get; init; }
+
+    /// <summary>
+    /// 训练轮数（Epoch，正整数，可选）
+    /// </summary>
+    /// <example>50</example>
+    public int? Epochs { get; init; }
+
+    /// <summary>
+    /// 批大小（Batch Size，正整数，可选）
+    /// </summary>
+    /// <example>20</example>
+    public int? BatchSize { get; init; }
 
     /// <summary>
     /// 训练任务备注说明（可选）

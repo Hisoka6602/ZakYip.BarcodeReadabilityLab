@@ -145,9 +145,19 @@ public sealed class TrainingWorker : BackgroundService
             var progressCallback = new TrainingProgressCallback(jobId, _trainingJobService, _progressNotifier, _logger);
 
             // 调用训练器执行训练
+            _logger.LogInformation(
+                "任务超参数 => 学习率: {LearningRate}, Epochs: {Epochs}, BatchSize: {BatchSize}, 验证集比例: {ValidationSplitRatio}",
+                request.LearningRate,
+                request.Epochs,
+                request.BatchSize,
+                request.ValidationSplitRatio ?? 0.0m);
+
             var trainingResult = await _trainer.TrainAsync(
                 request.TrainingRootDirectory,
                 request.OutputModelDirectory,
+                request.LearningRate,
+                request.Epochs,
+                request.BatchSize,
                 request.ValidationSplitRatio,
                 progressCallback,
                 cancellationToken);

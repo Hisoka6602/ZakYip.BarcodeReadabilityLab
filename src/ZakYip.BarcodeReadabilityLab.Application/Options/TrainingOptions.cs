@@ -21,6 +21,21 @@ public record class TrainingOptions
     public decimal? ValidationSplitRatio { get; init; }
 
     /// <summary>
+    /// 学习率（默认值：0.01）
+    /// </summary>
+    public decimal LearningRate { get; init; } = 0.01m;
+
+    /// <summary>
+    /// 训练轮数（Epoch，默认值：50）
+    /// </summary>
+    public int Epochs { get; init; } = 50;
+
+    /// <summary>
+    /// 批大小（Batch Size，默认值：20）
+    /// </summary>
+    public int BatchSize { get; init; } = 20;
+
+    /// <summary>
     /// 最大并发训练任务数量（默认值：1）
     /// </summary>
     public int MaxConcurrentTrainingJobs { get; init; } = 1;

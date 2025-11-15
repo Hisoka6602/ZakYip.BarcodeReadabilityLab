@@ -12,6 +12,9 @@ public interface IImageClassificationTrainer
     /// </summary>
     /// <param name="trainingRootDirectory">训练数据根目录（子目录名称为标签）</param>
     /// <param name="outputModelDirectory">输出模型文件目录</param>
+    /// <param name="learningRate">学习率（0-1 之间）</param>
+    /// <param name="epochs">训练轮数（Epoch）</param>
+    /// <param name="batchSize">批大小（Batch Size）</param>
     /// <param name="validationSplitRatio">验证集分割比例（0.0 到 1.0 之间，可选）</param>
     /// <param name="progressCallback">训练进度回调（可选）</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -19,6 +22,9 @@ public interface IImageClassificationTrainer
     Task<TrainingResult> TrainAsync(
         string trainingRootDirectory,
         string outputModelDirectory,
+        decimal learningRate,
+        int epochs,
+        int batchSize,
         decimal? validationSplitRatio = null,
         ITrainingProgressCallback? progressCallback = null,
         CancellationToken cancellationToken = default);

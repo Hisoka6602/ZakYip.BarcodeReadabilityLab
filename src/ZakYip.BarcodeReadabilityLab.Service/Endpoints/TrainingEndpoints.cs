@@ -94,6 +94,9 @@ public static class TrainingEndpoints
                 TrainingRootDirectory = request?.TrainingRootDirectory ?? defaultOptions.TrainingRootDirectory,
                 OutputModelDirectory = request?.OutputModelDirectory ?? defaultOptions.OutputModelDirectory,
                 ValidationSplitRatio = request?.ValidationSplitRatio ?? defaultOptions.ValidationSplitRatio,
+                LearningRate = request?.LearningRate ?? defaultOptions.LearningRate,
+                Epochs = request?.Epochs ?? defaultOptions.Epochs,
+                BatchSize = request?.BatchSize ?? defaultOptions.BatchSize,
                 Remarks = request?.Remarks
             };
 
@@ -159,6 +162,9 @@ public static class TrainingEndpoints
                 JobId = status.JobId,
                 State = stateDescription,
                 Progress = status.Progress,
+                LearningRate = status.LearningRate,
+                Epochs = status.Epochs,
+                BatchSize = status.BatchSize,
                 Message = status.Status switch
                 {
                     Application.Services.TrainingStatus.Queued => "训练任务排队中",
@@ -203,6 +209,9 @@ public static class TrainingEndpoints
                 JobId = status.JobId,
                 State = GetEnumDescription(status.Status),
                 Progress = status.Progress,
+                LearningRate = status.LearningRate,
+                Epochs = status.Epochs,
+                BatchSize = status.BatchSize,
                 Message = status.Status switch
                 {
                     Application.Services.TrainingStatus.Queued => "训练任务排队中",

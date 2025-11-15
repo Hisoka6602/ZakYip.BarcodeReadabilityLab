@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML;
 using Microsoft.ML.Data;
+using Microsoft.ML.Vision;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
@@ -43,14 +44,23 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
     public async Task<TrainingResult> TrainAsync(
         string trainingRootDirectory,
         string outputModelDirectory,
+        decimal learningRate,
+        int epochs,
+        int batchSize,
         decimal? validationSplitRatio = null,
         ITrainingProgressCallback? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        ValidateParameters(trainingRootDirectory, outputModelDirectory);
+        ValidateParameters(trainingRootDirectory, outputModelDirectory, learningRate, epochs, batchSize);
 
-        _logger.LogInformation("开始训练任务 => 训练根目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}, 验证比例: {ValidationSplitRatio}",
-            trainingRootDirectory, outputModelDirectory, validationSplitRatio ?? 0.0m);
+        _logger.LogInformation(
+            "开始训练任务 => 训练根目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}, 验证比例: {ValidationSplitRatio}, 学习率: {LearningRate}, Epochs: {Epochs}, BatchSize: {BatchSize}",
+            trainingRootDirectory,
+            outputModelDirectory,
+            validationSplitRatio ?? 0.0m,
+            learningRate,
+            epochs,
+            batchSize);
 
         try
         {
@@ -89,7 +99,8 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
             progressCallback?.ReportProgress(0.25m, "构建训练管道");
 
             // 构建训练管道
-            var pipeline = BuildTrainingPipeline();
+            var trainerOptions = BuildTrainerOptions(learningRate, epochs, batchSize, outputModelDirectory, progressCallback);
+            var pipeline = BuildTrainingPipeline(trainerOptions);
 
             _logger.LogInformation("开始训练模型...");
 
@@ -148,7 +159,12 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
     /// <summary>
     /// 验证输入参数
     /// </summary>
-    private void ValidateParameters(string trainingRootDirectory, string outputModelDirectory)
+    private void ValidateParameters(
+        string trainingRootDirectory,
+        string outputModelDirectory,
+        decimal learningRate,
+        int epochs,
+        int batchSize)
     {
         if (string.IsNullOrWhiteSpace(trainingRootDirectory))
             throw new TrainingException("训练根目录路径不能为空", "TRAIN_DIR_EMPTY");
@@ -158,6 +174,15 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
         if (!Directory.Exists(trainingRootDirectory))
             throw new TrainingException($"训练根目录不存在: {trainingRootDirectory}", "TRAIN_DIR_NOT_FOUND");
+
+        if (learningRate <= 0m || learningRate > 1m)
+            throw new TrainingException("学习率必须在 0 到 1 之间（不含 0）", "INVALID_LEARNING_RATE");
+
+        if (epochs < 1 || epochs > 500)
+            throw new TrainingException("Epoch 数必须在 1 到 500 之间", "INVALID_EPOCHS");
+
+        if (batchSize < 1 || batchSize > 512)
+            throw new TrainingException("Batch Size 必须在 1 到 512 之间", "INVALID_BATCH_SIZE");
     }
 
     /// <summary>
@@ -199,20 +224,59 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
     /// <summary>
     /// 构建训练管道
     /// </summary>
-    private IEstimator<ITransformer> BuildTrainingPipeline()
+    private ImageClassificationTrainer.Options BuildTrainerOptions(
+        decimal learningRate,
+        int epochs,
+        int batchSize,
+        string outputModelDirectory,
+        ITrainingProgressCallback? progressCallback)
     {
-        var pipeline = _mlContext.Transforms.Conversion.MapValueToKey("Label")
+        var options = new ImageClassificationTrainer.Options
+        {
+            FeatureColumnName = "Image",
+            LabelColumnName = "Label",
+            Arch = ImageClassificationTrainer.Architecture.Resnet50,
+            Epoch = epochs,
+            BatchSize = batchSize,
+            LearningRate = (float)learningRate,
+            ReuseTrainSetBottleneckCachedValues = true,
+            ReuseValidationSetBottleneckCachedValues = true,
+            WorkspacePath = Path.Combine(outputModelDirectory, "ml-workspace")
+        };
+
+        options.MetricsCallback = metrics =>
+        {
+            if (metrics is null)
+                return;
+
+            var accuracy = Math.Clamp(metrics.Accuracy, 0f, 1f);
+            var progress = 0.30m + (decimal)accuracy * 0.5m;
+            progressCallback?.ReportProgress(progress, $"Epoch {metrics.Epoch} 准确率 {accuracy:P2}, 损失 {metrics.CrossEntropy:F4}");
+            _logger.LogInformation(
+                "训练中 => Epoch: {Epoch}, 准确率: {Accuracy:P2}, 损失: {CrossEntropy:F4}",
+                metrics.Epoch,
+                accuracy,
+                metrics.CrossEntropy);
+        };
+
+        Directory.CreateDirectory(options.WorkspacePath!);
+
+        return options;
+    }
+
+    private IEstimator<ITransformer> BuildTrainingPipeline(ImageClassificationTrainer.Options trainerOptions)
+    {
+        var pipeline = _mlContext.Transforms.Conversion.MapValueToKey(
+                outputColumnName: "Label",
+                inputColumnName: nameof(TrainingImageData.Label))
             .Append(_mlContext.Transforms.LoadRawImageBytes(
-                outputColumnName: "ImageBytes",
+                outputColumnName: "Image",
                 imageFolder: null,
                 inputColumnName: nameof(TrainingImageData.ImagePath)))
-            .Append(_mlContext.Transforms.CopyColumns(
-                outputColumnName: "Features",
-                inputColumnName: "ImageBytes"))
-            .Append(_mlContext.MulticlassClassification.Trainers.SdcaMaximumEntropy(
-                labelColumnName: "Label",
-                featureColumnName: "Features"))
-            .Append(_mlContext.Transforms.Conversion.MapKeyToValue("PredictedLabel"));
+            .Append(_mlContext.MulticlassClassification.Trainers.ImageClassification(trainerOptions))
+            .Append(_mlContext.Transforms.Conversion.MapKeyToValue(
+                outputColumnName: "PredictedLabel",
+                inputColumnName: "PredictedLabel"));
 
         return pipeline;
     }

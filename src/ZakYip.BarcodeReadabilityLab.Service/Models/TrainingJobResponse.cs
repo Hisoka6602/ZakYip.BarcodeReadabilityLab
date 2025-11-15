@@ -13,6 +13,9 @@ using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 ///   "jobId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
 ///   "state": "运行中",
 ///   "progress": 0.65,
+///   "learningRate": 0.01,
+///   "epochs": 50,
+///   "batchSize": 20,
 ///   "message": "训练任务正在执行",
 ///   "startTime": "2024-01-01T10:00:00Z",
 ///   "completedTime": null,
@@ -39,6 +42,24 @@ public record class TrainingJobResponse
     /// </summary>
     /// <example>0.65</example>
     public decimal? Progress { get; init; }
+
+    /// <summary>
+    /// 学习率
+    /// </summary>
+    /// <example>0.01</example>
+    public decimal LearningRate { get; init; }
+
+    /// <summary>
+    /// 训练轮数（Epoch）
+    /// </summary>
+    /// <example>50</example>
+    public int Epochs { get; init; }
+
+    /// <summary>
+    /// 批大小（Batch Size）
+    /// </summary>
+    /// <example>20</example>
+    public int BatchSize { get; init; }
 
     /// <summary>
     /// 响应消息
