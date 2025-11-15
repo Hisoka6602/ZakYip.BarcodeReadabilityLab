@@ -50,10 +50,8 @@ public sealed class TrainingControllerTests
         var result = await controller.StartTraining(request, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var payloadType = okResult.Value!.GetType();
-        var jobProperty = payloadType.GetProperty("jobId");
-        Assert.NotNull(jobProperty);
-        Assert.Equal(jobId, (Guid)jobProperty!.GetValue(okResult.Value)!);
+        var response = Assert.IsType<StartTrainingResponse>(okResult.Value);
+        Assert.Equal(jobId, response.JobId);
 
         Assert.NotNull(capturedRequest);
         Assert.Equal(_defaults.TrainingRootDirectory, capturedRequest!.TrainingRootDirectory);
