@@ -189,6 +189,7 @@ app.MapHub<ZakYip.BarcodeReadabilityLab.Service.Hubs.TrainingProgressHub>("/hubs
 
 // 注册 Minimal API 端点
 app.MapTrainingEndpoints();
+app.MapModelEndpoints();
 
 // 注册传统 MVC 控制器（向后兼容）
 app.MapControllers();

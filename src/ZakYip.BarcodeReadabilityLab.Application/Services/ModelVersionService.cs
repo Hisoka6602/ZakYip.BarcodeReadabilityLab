@@ -93,6 +93,15 @@ public sealed class ModelVersionService : IModelVersionService
     }
 
     /// <inheritdoc />
+    public Task<ModelVersion?> GetByIdAsync(Guid versionId, CancellationToken cancellationToken = default)
+    {
+        if (versionId == Guid.Empty)
+            throw new ArgumentException("模型版本标识不能为空", nameof(versionId));
+
+        return _repository.GetByIdAsync(versionId, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<ModelVersion>> GetActiveListAsync(CancellationToken cancellationToken = default) =>
         _repository.GetActiveListAsync(cancellationToken);
 
