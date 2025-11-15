@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{50F6592E-178E-476F-90F4-7C81016DCA96}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.Service", "src\ZakYip.BarcodeReadabilityLab.Service\ZakYip.BarcodeReadabilityLab.Service.csproj", "{C36EB832-B924-49D1-8DEA-B480F09200A0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.Core", "src\ZakYip.BarcodeReadabilityLab.Core\ZakYip.BarcodeReadabilityLab.Core.csproj", "{F02E21D7-DE13-4875-BC65-428D478C6C58}"
@@ -15,6 +17,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence", "src\ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence\ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.csproj", "{8C5C5876-D0DB-4AD1-A6CD-EB524B7A0DAC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.Core.Tests", "tests\ZakYip.BarcodeReadabilityLab.Core.Tests\ZakYip.BarcodeReadabilityLab.Core.Tests.csproj", "{016D6D56-4BA1-400F-AC40-97E906A1508F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.Application.Tests", "tests\ZakYip.BarcodeReadabilityLab.Application.Tests\ZakYip.BarcodeReadabilityLab.Application.Tests.csproj", "{1862551D-F243-4096-9E38-6817DD47FCBA}"
+EndProject
+
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -85,6 +92,30 @@ Global
 		{8C5C5876-D0DB-4AD1-A6CD-EB524B7A0DAC}.Release|x64.Build.0 = Release|Any CPU
 		{8C5C5876-D0DB-4AD1-A6CD-EB524B7A0DAC}.Release|x86.ActiveCfg = Release|Any CPU
 		{8C5C5876-D0DB-4AD1-A6CD-EB524B7A0DAC}.Release|x86.Build.0 = Release|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Debug|x64.ActiveCfg = Debug|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Debug|x64.Build.0 = Debug|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Debug|x86.ActiveCfg = Debug|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Debug|x86.Build.0 = Debug|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Release|Any CPU.Build.0 = Release|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Release|x64.ActiveCfg = Release|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Release|x64.Build.0 = Release|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Release|x86.ActiveCfg = Release|Any CPU
+                {016D6D56-4BA1-400F-AC40-97E906A1508F}.Release|x86.Build.0 = Release|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Debug|x64.ActiveCfg = Debug|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Debug|x64.Build.0 = Debug|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Debug|x86.ActiveCfg = Debug|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Debug|x86.Build.0 = Debug|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|Any CPU.Build.0 = Release|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|x64.ActiveCfg = Release|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|x64.Build.0 = Release|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|x86.ActiveCfg = Release|Any CPU
+                {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -95,5 +126,7 @@ Global
 		{7D33B632-39E9-4C25-A607-F6A43A1528E0} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{C14CCAE3-EA7A-4DA7-AC07-3BDE25ACB1CB} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{8C5C5876-D0DB-4AD1-A6CD-EB524B7A0DAC} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+                {016D6D56-4BA1-400F-AC40-97E906A1508F} = {50F6592E-178E-476F-90F4-7C81016DCA96}
+                {1862551D-F243-4096-9E38-6817DD47FCBA} = {50F6592E-178E-476F-90F4-7C81016DCA96}
 	EndGlobalSection
 EndGlobal
