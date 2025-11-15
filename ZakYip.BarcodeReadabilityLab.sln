@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.Application.Tests", "tests\ZakYip.BarcodeReadabilityLab.Application.Tests\ZakYip.BarcodeReadabilityLab.Application.Tests.csproj", "{1862551D-F243-4096-9E38-6817DD47FCBA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.IntegrationTests", "tests\ZakYip.BarcodeReadabilityLab.IntegrationTests\ZakYip.BarcodeReadabilityLab.IntegrationTests.csproj", "{A219C1C8-A10D-416D-B1BD-F9BD75186496}"
+EndProject
 
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -116,7 +118,19 @@ Global
                 {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|x64.Build.0 = Release|Any CPU
                 {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|x86.ActiveCfg = Release|Any CPU
                 {1862551D-F243-4096-9E38-6817DD47FCBA}.Release|x86.Build.0 = Release|Any CPU
-	EndGlobalSection
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Debug|Any CPU.Build.0 = Debug|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Debug|x64.ActiveCfg = Debug|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Debug|x64.Build.0 = Debug|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Debug|x86.ActiveCfg = Debug|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Debug|x86.Build.0 = Debug|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|Any CPU.Build.0 = Release|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|x64.ActiveCfg = Release|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|x64.Build.0 = Release|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|x86.ActiveCfg = Release|Any CPU
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|x86.Build.0 = Release|Any CPU
+        EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
@@ -128,5 +142,6 @@ Global
 		{8C5C5876-D0DB-4AD1-A6CD-EB524B7A0DAC} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
                 {016D6D56-4BA1-400F-AC40-97E906A1508F} = {50F6592E-178E-476F-90F4-7C81016DCA96}
                 {1862551D-F243-4096-9E38-6817DD47FCBA} = {50F6592E-178E-476F-90F4-7C81016DCA96}
-	EndGlobalSection
+                {A219C1C8-A10D-416D-B1BD-F9BD75186496} = {50F6592E-178E-476F-90F4-7C81016DCA96}
+        EndGlobalSection
 EndGlobal

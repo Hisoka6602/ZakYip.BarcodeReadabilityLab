@@ -198,6 +198,10 @@ app.MapTrainingEndpoints();
 // 注册传统 MVC 控制器（向后兼容）
 app.MapControllers();
 
+public partial class Program
+{
+}
+
     Log.Information("应用程序已启动，正在监听地址：{Urls}", apiSettings.Urls);
     app.Run();
     
