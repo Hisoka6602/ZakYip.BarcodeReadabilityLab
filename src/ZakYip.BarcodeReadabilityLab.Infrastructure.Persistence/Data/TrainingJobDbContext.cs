@@ -19,6 +19,11 @@ public class TrainingJobDbContext : DbContext
     /// </summary>
     public DbSet<TrainingJobEntity> TrainingJobs => Set<TrainingJobEntity>();
 
+    /// <summary>
+    /// 模型版本实体集合
+    /// </summary>
+    public DbSet<ModelVersionEntity> ModelVersions => Set<ModelVersionEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -103,6 +108,63 @@ public class TrainingJobDbContext : DbContext
 
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartTime);
+        });
+
+        modelBuilder.Entity<ModelVersionEntity>(entity =>
+        {
+            entity.HasKey(e => e.VersionId);
+
+            entity.Property(e => e.VersionId)
+                .IsRequired();
+
+            entity.Property(e => e.VersionName)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.ModelPath)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            entity.Property(e => e.DeploymentSlot)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.TrafficPercentage)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.Accuracy)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MacroPrecision)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MacroRecall)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MacroF1Score)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MicroPrecision)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MicroRecall)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.MicroF1Score)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.LogLoss)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.DeploymentSlot);
+            entity.HasIndex(e => e.CreatedAt);
         });
     }
 }

@@ -33,6 +33,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TrainingJobService>();
         services.AddSingleton<ITrainingJobService>(sp => sp.GetRequiredService<TrainingJobService>());
 
+        // 注册模型版本管理服务
+        services.AddSingleton<ModelVersionService>();
+        services.AddSingleton<IModelVersionService>(sp => sp.GetRequiredService<ModelVersionService>());
+
         // 注册训练任务恢复服务（在其他服务启动前执行）
         services.AddHostedService<TrainingJobRecoveryService>();
 

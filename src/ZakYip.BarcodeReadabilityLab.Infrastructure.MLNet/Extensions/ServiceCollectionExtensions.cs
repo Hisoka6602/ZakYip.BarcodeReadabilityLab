@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
 
         // 注册 IBarcodeReadabilityAnalyzer 实现
         services.AddSingleton<IBarcodeReadabilityAnalyzer, MlNetBarcodeReadabilityAnalyzer>();
+        services.AddSingleton<IModelVariantAnalyzer, MlNetModelVariantAnalyzer>();
 
         // 注册 IImageClassificationTrainer 实现
         services.AddSingleton<IImageClassificationTrainer, MlNetImageClassificationTrainer>();
@@ -62,6 +63,7 @@ public static class ServiceCollectionExtensions
 
         // 注册 IBarcodeReadabilityAnalyzer 实现
         services.AddSingleton<IBarcodeReadabilityAnalyzer, MlNetBarcodeReadabilityAnalyzer>();
+        services.AddSingleton<IModelVariantAnalyzer, MlNetModelVariantAnalyzer>();
 
         // 注册 IImageClassificationTrainer 实现
         services.AddSingleton<IImageClassificationTrainer, MlNetImageClassificationTrainer>();

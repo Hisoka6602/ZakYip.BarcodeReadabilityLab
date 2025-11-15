@@ -199,16 +199,7 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
         if (string.IsNullOrWhiteSpace(label))
             return (null, false);
 
-        // 尝试按枚举名称匹配
-        if (Enum.TryParse<NoreadReason>(label, ignoreCase: true, out var reasonByName))
-            return (reasonByName, true);
-
-        // 尝试按数值匹配
-        if (int.TryParse(label, out var numericValue) && Enum.IsDefined(typeof(NoreadReason), numericValue))
-            return ((NoreadReason)numericValue, true);
-
-        return (null, false);
-    }
+        => MlNetPredictionMapper.MapLabelToNoreadReason(label);
 
     /// <summary>
     /// 配置变更处理
