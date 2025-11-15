@@ -38,16 +38,16 @@
 
 ### 本次更新
 
-- ✨ 新增 `DataAugmentationOptions`、`DataBalancingOptions` 等领域模型，支持可配置的数据增强与数据平衡策略，并将配置完整透传到训练任务与训练历史记录中。
-- 🧠 `MlNetImageClassificationTrainer` 集成旋转、翻转与亮度调整等图像增强操作，同时提供过采样/欠采样处理与增强后测试集评估报告，日志与评估结果均包含详细统计。
-- ⚙️ Minimal API 与持久化层新增数据增强/数据平衡参数绑定与持久化，`appsettings.json` 提供可开箱即用的默认配置。
-- 📊 训练任务响应与训练历史返回增强/平衡配置以及增强效果 JSON，便于后续分析和可视化。
+- ✨ 新增 `ModelVersion`、`ModelComparisonResult` 等领域模型，完整描述模型版本元数据（部署槽位、流量分配、评估指标等）。
+- 🗃️ EF Core 扩展：`ModelVersionEntity`、`ModelVersionRepository` 与 `TrainingJobDbContext` 配置模型版本表，实现版本增删查改与激活管理。
+- 🔁 新增应用层 `ModelVersionService` 及其注册模型 `ModelVersionRegistration`，支持版本注册、激活切换、回滚及历史查询，同时通过可变 Options 驱动在线模型热更新。
+- ⚖️ ML.NET 引入 `MlNetModelVariantAnalyzer` 与公共标签映射器，支持一次性对多个模型版本执行预测对比，实现 A/B 测试能力。
 
 ### 可继续完善
 
-- 🔄 增强测试集评估目前与训练后同步执行，可进一步抽象为独立服务以便多次评估。
-- 🧪 针对不同增强策略的 A/B 对比仍可扩展，如自动多组超参试验管理。
-- 📈 评估报告可结合前端展示图表（如混淆矩阵热力图、增强前后指标对比曲线）。
+- 🔀 流量分配目前仅存储百分比信息，后续可结合路由层逻辑实现实时流量切分与灰度放量策略。
+- 📡 模型对比结果当前以同步方法返回，可拓展为历史存档与可视化面板，支持批量样本对比与统计报表。
+- 🧾 当前数据库仍依赖 `EnsureCreated`，后续可补充迁移脚本或版本控制机制，保障模型版本表结构演进。
 
 ### 核心文件结构一览
 
@@ -57,26 +57,38 @@ src/ZakYip.BarcodeReadabilityLab.Core/Domain/Models/
 ├─ DataBalancingOptions.cs           // 数据平衡参数定义
 ├─ DataBalancingStrategy.cs          // 数据平衡策略枚举（字符串枚举）
 ├─ DataAugmentationImpact.cs         // 增强与评估影响报告结构
+├─ ModelVersion.cs                   // 模型版本领域模型（包含部署槽位、流量与评估快照）
+├─ ModelComparisonResult.cs          // 多模型预测对比结果聚合
 
 src/ZakYip.BarcodeReadabilityLab.Application/
-├─ Options/TrainingOptions.cs        // 新增 DataAugmentation/DataBalancing 默认值
+├─ Options/TrainingOptions.cs        // DataAugmentation/DataBalancing 默认值
 ├─ Services/TrainingRequest.cs       // 请求携带增强/平衡配置
 ├─ Services/TrainingJobService.cs    // 参数校验、日志与持久化增强/平衡信息
 ├─ Services/TrainingJobStatus.cs     // 状态对象暴露增强/平衡配置
+├─ Services/ModelVersionService.cs   // 模型版本注册、激活、回滚与多模型对比
+├─ Services/IModelVersionService.cs  // 模型版本管理服务契约
+├─ Services/ModelVersionRegistration.cs // 模型版本注册请求结构
 ├─ Workers/TrainingWorker.cs         // 调用训练器时传入增强/平衡参数并记录日志
+├─ Extensions/ServiceCollectionExtensions.cs // 注册训练任务与模型版本服务
 
 src/ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet/
 ├─ Services/MlNetImageClassificationTrainer.cs
 │  ├─ 应用数据平衡与图像增强（旋转/翻转/亮度）
 │  ├─ 训练后生成增强影响评估 JSON
 │  └─ 清理临时增强文件，记录操作统计
+├─ Services/MlNetModelVariantAnalyzer.cs   // ML.NET 多模型预测对比实现
+├─ Services/MlNetPredictionMapper.cs       // 标签到 NoreadReason 的统一映射工具
+├─ Services/MlNetBarcodeReadabilityAnalyzer.cs // 在线分析器，复用公共映射器与配置热更新
 ├─ ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.csproj
 │  └─ 新增 SixLabors.ImageSharp 依赖
 
 src/ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence/
 ├─ Entities/TrainingJobEntity.cs     // 序列化增强/平衡配置及评估报告
+├─ Entities/ModelVersionEntity.cs    // 模型版本实体映射（含指标字段）
 ├─ Data/TrainingJobDbContext.cs      // 配置 JSON 列
 ├─ Repositories/TrainingJobRepository.cs // 更新任务时同步保存 JSON 字段
+├─ Repositories/ModelVersionRepository.cs // 模型版本增删改查及激活逻辑
+├─ Extensions/ServiceCollectionExtensions.cs // 注册训练任务与模型版本仓储
 
 src/ZakYip.BarcodeReadabilityLab.Service/
 ├─ Models/StartTrainingRequest.cs    // API 请求可传入增强/平衡配置

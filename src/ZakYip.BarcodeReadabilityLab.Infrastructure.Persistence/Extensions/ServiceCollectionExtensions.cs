@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
 
         // 注册仓储
         services.AddScoped<ITrainingJobRepository, TrainingJobRepository>();
+        services.AddScoped<IModelVersionRepository, ModelVersionRepository>();
 
         // 确保数据库已创建
         using var serviceProvider = services.BuildServiceProvider();
