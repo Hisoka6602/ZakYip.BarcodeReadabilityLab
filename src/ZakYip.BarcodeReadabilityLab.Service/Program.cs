@@ -93,6 +93,48 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 
+// 配置 Swagger/OpenAPI
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "条码可读性分析 API",
+        Version = "v1",
+        Description = "提供条码图片可读性分析和模型训练的 API 服务",
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "ZakYip.BarcodeReadabilityLab",
+            Url = new Uri("https://github.com/Hisoka6602/ZakYip.BarcodeReadabilityLab")
+        }
+    });
+
+    // 包含 XML 注释文档
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
+
+    // 配置 Swagger UI 的标签顺序
+    options.TagActionsBy(api =>
+    {
+        if (api.GroupName != null)
+        {
+            return new[] { api.GroupName };
+        }
+
+        if (api.ActionDescriptor is Microsoft.AspNetCore.Mvc.Controllers.ControllerActionDescriptor controllerActionDescriptor)
+        {
+            return new[] { controllerActionDescriptor.ControllerName };
+        }
+
+        return new[] { "默认" };
+    });
+
+    options.DocInclusionPredicate((name, api) => true);
+});
+
 var app = builder.Build();
 
 // 配置监听地址
@@ -128,6 +170,24 @@ app.UseExceptionHandler(exceptionHandlerApp =>
 });
 
 app.UseRouting();
+
+// 启用 Swagger 中间件
+app.UseSwagger(options =>
+{
+    options.RouteTemplate = "api-docs/{documentName}/swagger.json";
+});
+
+// 启用 Swagger UI
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/api-docs/v1/swagger.json", "条码可读性分析 API v1");
+    options.RoutePrefix = "api-docs";
+    options.DocumentTitle = "条码可读性分析 API 文档";
+    options.EnableDeepLinking();
+    options.EnableFilter();
+    options.EnableTryItOutByDefault();
+    options.DisplayRequestDuration();
+});
 
 // 注册 SignalR Hub 端点
 app.MapHub<ZakYip.BarcodeReadabilityLab.Service.Hubs.TrainingProgressHub>("/hubs/training-progress");
