@@ -27,6 +27,11 @@ public interface IModelVersionService
     Task<ModelVersion?> GetActiveAsync(string deploymentSlot, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 根据版本标识获取模型版本
+    /// </summary>
+    Task<ModelVersion?> GetByIdAsync(Guid versionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 获取所有激活模型版本
     /// </summary>
     Task<IReadOnlyList<ModelVersion>> GetActiveListAsync(CancellationToken cancellationToken = default);
