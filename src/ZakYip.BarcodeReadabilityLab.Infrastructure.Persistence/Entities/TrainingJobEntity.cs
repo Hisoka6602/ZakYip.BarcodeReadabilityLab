@@ -1,5 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Entities;
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 
 /// <summary>
@@ -7,6 +9,12 @@ using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 /// </summary>
 public class TrainingJobEntity
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     /// <summary>
     /// 训练任务唯一标识符
     /// </summary>
@@ -123,6 +131,21 @@ public class TrainingJobEntity
     public string? PerClassMetricsJson { get; set; }
 
     /// <summary>
+    /// 数据增强配置 JSON
+    /// </summary>
+    public string? DataAugmentationOptionsJson { get; set; }
+
+    /// <summary>
+    /// 数据平衡配置 JSON
+    /// </summary>
+    public string? DataBalancingOptionsJson { get; set; }
+
+    /// <summary>
+    /// 数据增强影响评估 JSON
+    /// </summary>
+    public string? DataAugmentationImpactJson { get; set; }
+
+    /// <summary>
     /// 转换为领域模型
     /// </summary>
     public TrainingJob ToModel()
@@ -130,8 +153,8 @@ public class TrainingJobEntity
         ModelEvaluationMetrics? evaluationMetrics = null;
 
         // 如果有评估指标数据，构建评估指标对象
-        if (Accuracy.HasValue && MacroPrecision.HasValue && MacroRecall.HasValue && 
-            MacroF1Score.HasValue && MicroPrecision.HasValue && MicroRecall.HasValue && 
+        if (Accuracy.HasValue && MacroPrecision.HasValue && MacroRecall.HasValue &&
+            MacroF1Score.HasValue && MicroPrecision.HasValue && MicroRecall.HasValue &&
             MicroF1Score.HasValue && !string.IsNullOrWhiteSpace(ConfusionMatrixJson))
         {
             evaluationMetrics = new ModelEvaluationMetrics
@@ -145,9 +168,18 @@ public class TrainingJobEntity
                 MicroF1Score = MicroF1Score.Value,
                 LogLoss = LogLoss,
                 ConfusionMatrixJson = ConfusionMatrixJson,
-                PerClassMetricsJson = PerClassMetricsJson
+                PerClassMetricsJson = PerClassMetricsJson,
+                DataAugmentationImpactJson = DataAugmentationImpactJson
             };
         }
+
+        var augmentationOptions = !string.IsNullOrWhiteSpace(DataAugmentationOptionsJson)
+            ? JsonSerializer.Deserialize<DataAugmentationOptions>(DataAugmentationOptionsJson, JsonOptions) ?? new DataAugmentationOptions()
+            : new DataAugmentationOptions();
+
+        var balancingOptions = !string.IsNullOrWhiteSpace(DataBalancingOptionsJson)
+            ? JsonSerializer.Deserialize<DataBalancingOptions>(DataBalancingOptionsJson, JsonOptions) ?? new DataBalancingOptions()
+            : new DataBalancingOptions();
 
         return new TrainingJob
         {
@@ -164,6 +196,8 @@ public class TrainingJobEntity
             CompletedTime = CompletedTime,
             ErrorMessage = ErrorMessage,
             Remarks = Remarks,
+            DataAugmentation = augmentationOptions,
+            DataBalancing = balancingOptions,
             EvaluationMetrics = evaluationMetrics
         };
     }
@@ -197,7 +231,10 @@ public class TrainingJobEntity
             MicroF1Score = model.EvaluationMetrics?.MicroF1Score,
             LogLoss = model.EvaluationMetrics?.LogLoss,
             ConfusionMatrixJson = model.EvaluationMetrics?.ConfusionMatrixJson,
-            PerClassMetricsJson = model.EvaluationMetrics?.PerClassMetricsJson
+            PerClassMetricsJson = model.EvaluationMetrics?.PerClassMetricsJson,
+            DataAugmentationImpactJson = model.EvaluationMetrics?.DataAugmentationImpactJson,
+            DataAugmentationOptionsJson = JsonSerializer.Serialize(model.DataAugmentation, JsonOptions),
+            DataBalancingOptionsJson = JsonSerializer.Serialize(model.DataBalancing, JsonOptions)
         };
     }
 }

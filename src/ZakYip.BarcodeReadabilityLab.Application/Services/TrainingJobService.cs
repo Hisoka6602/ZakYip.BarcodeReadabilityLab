@@ -61,7 +61,9 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
             Status = TrainingJobState.Queued,
             Progress = 0.0m,
             StartTime = DateTimeOffset.UtcNow,
-            Remarks = request.Remarks
+            Remarks = request.Remarks,
+            DataAugmentation = request.DataAugmentation,
+            DataBalancing = request.DataBalancing
         };
 
         // 持久化到数据库
@@ -83,6 +85,30 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
             request.LearningRate,
             request.Epochs,
             request.BatchSize);
+
+        if (request.DataAugmentation.Enable)
+        {
+            _logger.LogInformation(
+                "数据增强配置 => 副本数: {Copies}, 旋转: {RotationEnabled}/{RotationProbability:P0}, 水平翻转: {HorizontalEnabled}/{HorizontalProbability:P0}, 垂直翻转: {VerticalEnabled}/{VerticalProbability:P0}, 亮度: {BrightnessEnabled}/{BrightnessProbability:P0}",
+                request.DataAugmentation.AugmentedImagesPerSample,
+                request.DataAugmentation.EnableRotation,
+                request.DataAugmentation.RotationProbability,
+                request.DataAugmentation.EnableHorizontalFlip,
+                request.DataAugmentation.HorizontalFlipProbability,
+                request.DataAugmentation.EnableVerticalFlip,
+                request.DataAugmentation.VerticalFlipProbability,
+                request.DataAugmentation.EnableBrightnessAdjustment,
+                request.DataAugmentation.BrightnessProbability);
+        }
+
+        if (request.DataBalancing.Strategy != DataBalancingStrategy.None)
+        {
+            _logger.LogInformation(
+                "数据平衡配置 => 策略: {Strategy}, 目标样本数: {Target}, 是否乱序: {Shuffle}",
+                request.DataBalancing.Strategy,
+                request.DataBalancing.TargetSampleCountPerClass,
+                request.DataBalancing.ShuffleAfterBalancing);
+        }
 
         return jobId;
     }
@@ -110,6 +136,8 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
             CompletedTime = trainingJob.CompletedTime,
             ErrorMessage = trainingJob.ErrorMessage,
             Remarks = trainingJob.Remarks,
+            DataAugmentation = trainingJob.DataAugmentation,
+            DataBalancing = trainingJob.DataBalancing,
             EvaluationMetrics = trainingJob.EvaluationMetrics
         };
     }
@@ -134,6 +162,8 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
                 CompletedTime = job.CompletedTime,
                 ErrorMessage = job.ErrorMessage,
                 Remarks = job.Remarks,
+                DataAugmentation = job.DataAugmentation,
+                DataBalancing = job.DataBalancing,
                 EvaluationMetrics = job.EvaluationMetrics
             })
             .ToList();
@@ -348,6 +378,43 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
 
         if (request.BatchSize < 1 || request.BatchSize > 512)
             throw new TrainingException("Batch Size 必须在 1 到 512 之间", "INVALID_BATCH_SIZE");
+
+        var augmentation = request.DataAugmentation;
+        if (augmentation is null)
+            throw new TrainingException("数据增强配置不能为空", "AUGMENTATION_NULL");
+
+        if (augmentation.AugmentedImagesPerSample < 0)
+            throw new TrainingException("数据增强副本数量不能为负数", "INVALID_AUGMENTATION_COPIES");
+
+        if (augmentation.EvaluationAugmentedImagesPerSample < 1)
+            throw new TrainingException("评估增强副本数量至少为 1", "INVALID_EVAL_AUGMENTATION_COPIES");
+
+        if (augmentation.RotationAngles is null)
+            throw new TrainingException("旋转角度集合不能为空", "INVALID_ROTATION_ANGLES");
+
+        ValidateProbability(augmentation.RotationProbability, "旋转概率", "INVALID_ROTATION_PROBABILITY");
+        ValidateProbability(augmentation.HorizontalFlipProbability, "水平翻转概率", "INVALID_HFLIP_PROBABILITY");
+        ValidateProbability(augmentation.VerticalFlipProbability, "垂直翻转概率", "INVALID_VFLIP_PROBABILITY");
+        ValidateProbability(augmentation.BrightnessProbability, "亮度调整概率", "INVALID_BRIGHTNESS_PROBABILITY");
+
+        if (augmentation.BrightnessLower <= 0 || augmentation.BrightnessUpper <= 0)
+            throw new TrainingException("亮度调整范围必须大于 0", "INVALID_BRIGHTNESS_RANGE");
+
+        if (augmentation.BrightnessLower > augmentation.BrightnessUpper)
+            throw new TrainingException("亮度调整下限不能大于上限", "INVALID_BRIGHTNESS_RANGE");
+
+        var balancing = request.DataBalancing;
+        if (balancing is null)
+            throw new TrainingException("数据平衡配置不能为空", "BALANCING_NULL");
+
+        if (balancing.TargetSampleCountPerClass.HasValue && balancing.TargetSampleCountPerClass <= 0)
+            throw new TrainingException("数据平衡目标样本数必须大于 0", "INVALID_BALANCING_TARGET");
+    }
+
+    private static void ValidateProbability(double value, string displayName, string errorCode)
+    {
+        if (value < 0d || value > 1d)
+            throw new TrainingException($"{displayName} 必须在 0 到 1 之间", errorCode);
     }
 
     /// <summary>

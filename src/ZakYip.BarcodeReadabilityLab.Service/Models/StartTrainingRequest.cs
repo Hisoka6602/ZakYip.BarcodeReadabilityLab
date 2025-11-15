@@ -1,5 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Service.Models;
 
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+
 /// <summary>
 /// 启动训练任务的请求模型
 /// </summary>
@@ -15,7 +17,15 @@ namespace ZakYip.BarcodeReadabilityLab.Service.Models;
 ///   "learningRate": 0.01,
 ///   "epochs": 50,
 ///   "batchSize": 20,
-///   "remarks": "第一次训练测试"
+///   "remarks": "第一次训练测试",
+///   "dataAugmentation": {
+///     "enable": true,
+///     "augmentedImagesPerSample": 2,
+///     "enableHorizontalFlip": true
+///   },
+///   "dataBalancing": {
+///     "strategy": "OverSample"
+///   }
 /// }
 /// </example>
 public record class StartTrainingRequest
@@ -61,4 +71,14 @@ public record class StartTrainingRequest
     /// </summary>
     /// <example>第一次训练测试</example>
     public string? Remarks { get; init; }
+
+    /// <summary>
+    /// 数据增强配置（可选）
+    /// </summary>
+    public DataAugmentationOptions? DataAugmentation { get; init; }
+
+    /// <summary>
+    /// 数据平衡配置（可选）
+    /// </summary>
+    public DataBalancingOptions? DataBalancing { get; init; }
 }

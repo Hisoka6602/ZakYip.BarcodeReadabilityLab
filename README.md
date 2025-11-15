@@ -34,6 +34,57 @@
 - ASP.NET Core Minimal API
 - Windows Services
 
+## 最新更新概览
+
+### 本次更新
+
+- ✨ 新增 `DataAugmentationOptions`、`DataBalancingOptions` 等领域模型，支持可配置的数据增强与数据平衡策略，并将配置完整透传到训练任务与训练历史记录中。
+- 🧠 `MlNetImageClassificationTrainer` 集成旋转、翻转与亮度调整等图像增强操作，同时提供过采样/欠采样处理与增强后测试集评估报告，日志与评估结果均包含详细统计。
+- ⚙️ Minimal API 与持久化层新增数据增强/数据平衡参数绑定与持久化，`appsettings.json` 提供可开箱即用的默认配置。
+- 📊 训练任务响应与训练历史返回增强/平衡配置以及增强效果 JSON，便于后续分析和可视化。
+
+### 可继续完善
+
+- 🔄 增强测试集评估目前与训练后同步执行，可进一步抽象为独立服务以便多次评估。
+- 🧪 针对不同增强策略的 A/B 对比仍可扩展，如自动多组超参试验管理。
+- 📈 评估报告可结合前端展示图表（如混淆矩阵热力图、增强前后指标对比曲线）。
+
+### 核心文件结构一览
+
+```
+src/ZakYip.BarcodeReadabilityLab.Core/Domain/Models/
+├─ DataAugmentationOptions.cs        // 数据增强参数定义
+├─ DataBalancingOptions.cs           // 数据平衡参数定义
+├─ DataBalancingStrategy.cs          // 数据平衡策略枚举（字符串枚举）
+├─ DataAugmentationImpact.cs         // 增强与评估影响报告结构
+
+src/ZakYip.BarcodeReadabilityLab.Application/
+├─ Options/TrainingOptions.cs        // 新增 DataAugmentation/DataBalancing 默认值
+├─ Services/TrainingRequest.cs       // 请求携带增强/平衡配置
+├─ Services/TrainingJobService.cs    // 参数校验、日志与持久化增强/平衡信息
+├─ Services/TrainingJobStatus.cs     // 状态对象暴露增强/平衡配置
+├─ Workers/TrainingWorker.cs         // 调用训练器时传入增强/平衡参数并记录日志
+
+src/ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet/
+├─ Services/MlNetImageClassificationTrainer.cs
+│  ├─ 应用数据平衡与图像增强（旋转/翻转/亮度）
+│  ├─ 训练后生成增强影响评估 JSON
+│  └─ 清理临时增强文件，记录操作统计
+├─ ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.csproj
+│  └─ 新增 SixLabors.ImageSharp 依赖
+
+src/ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence/
+├─ Entities/TrainingJobEntity.cs     // 序列化增强/平衡配置及评估报告
+├─ Data/TrainingJobDbContext.cs      // 配置 JSON 列
+├─ Repositories/TrainingJobRepository.cs // 更新任务时同步保存 JSON 字段
+
+src/ZakYip.BarcodeReadabilityLab.Service/
+├─ Models/StartTrainingRequest.cs    // API 请求可传入增强/平衡配置
+├─ Models/TrainingJobResponse.cs     // 响应包含增强/平衡配置
+├─ Endpoints/TrainingEndpoints.cs    // 映射配置 & 返回增强信息
+├─ appsettings.json                  // 增加默认的数据增强/平衡参数
+```
+
 ## 项目运行流程
 
 ### 1. 系统架构流程

@@ -1,5 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Application.Options;
 
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+
 /// <summary>
 /// 训练任务配置选项
 /// </summary>
@@ -49,4 +51,14 @@ public record class TrainingOptions
     /// 资源监控间隔（秒）（默认值：5）
     /// </summary>
     public int ResourceMonitoringIntervalSeconds { get; init; } = 5;
+
+    /// <summary>
+    /// 数据增强配置（默认禁用）
+    /// </summary>
+    public DataAugmentationOptions DataAugmentation { get; init; } = new();
+
+    /// <summary>
+    /// 数据平衡配置（默认不处理）
+    /// </summary>
+    public DataBalancingOptions DataBalancing { get; init; } = new();
 }

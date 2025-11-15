@@ -54,4 +54,9 @@ public record class ModelEvaluationMetrics
     /// 每个类别的评估指标（JSON 序列化）
     /// </summary>
     public string? PerClassMetricsJson { get; init; }
+
+    /// <summary>
+    /// 数据增强与数据平衡影响报告（JSON 序列化）
+    /// </summary>
+    public string? DataAugmentationImpactJson { get; init; }
 }

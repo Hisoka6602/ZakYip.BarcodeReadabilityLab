@@ -1,5 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Application.Services;
 
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+
 /// <summary>
 /// 训练请求
 /// </summary>
@@ -39,4 +41,14 @@ public record class TrainingRequest
     /// 训练任务备注说明（可选）
     /// </summary>
     public string? Remarks { get; init; }
+
+    /// <summary>
+    /// 数据增强配置
+    /// </summary>
+    public DataAugmentationOptions DataAugmentation { get; init; } = new();
+
+    /// <summary>
+    /// 数据平衡配置
+    /// </summary>
+    public DataBalancingOptions DataBalancing { get; init; } = new();
 }

@@ -71,6 +71,16 @@ public record class TrainingJob
     public string? Remarks { get; init; }
 
     /// <summary>
+    /// 数据增强配置
+    /// </summary>
+    public DataAugmentationOptions DataAugmentation { get; init; } = new();
+
+    /// <summary>
+    /// 数据平衡配置
+    /// </summary>
+    public DataBalancingOptions DataBalancing { get; init; } = new();
+
+    /// <summary>
     /// 模型评估指标（训练完成后可用）
     /// </summary>
     public ModelEvaluationMetrics? EvaluationMetrics { get; init; }
