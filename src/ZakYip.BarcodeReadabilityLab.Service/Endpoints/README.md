@@ -43,32 +43,40 @@ public static class TrainingEndpoints
     /// 启动训练任务
     /// </summary>
     private static async Task<IResult> StartTrainingAsync(
-        [FromBody] StartTrainingRequest request,
-        [FromServices] ITrainingService trainingService,
+        [FromBody] StartTrainingRequest? request,
+        [FromServices] ITrainingJobService trainingJobService,
+        [FromServices] IOptions<TrainingOptions> trainingOptions,
         CancellationToken cancellationToken)
     {
-        try
+        var defaults = trainingOptions.Value;
+        var trainingRequest = new TrainingRequest
         {
-            var taskId = await trainingService.StartAsync(request, cancellationToken);
-            return Results.Ok(new { TaskId = taskId });
-        }
-        catch (Exception ex)
-        {
-            return Results.BadRequest(new { Error = ex.Message });
-        }
+            TrainingRootDirectory = request?.TrainingRootDirectory ?? defaults.TrainingRootDirectory,
+            OutputModelDirectory = request?.OutputModelDirectory ?? defaults.OutputModelDirectory,
+            ValidationSplitRatio = request?.ValidationSplitRatio ?? defaults.ValidationSplitRatio,
+            LearningRate = request?.LearningRate ?? defaults.LearningRate,
+            Epochs = request?.Epochs ?? defaults.Epochs,
+            BatchSize = request?.BatchSize ?? defaults.BatchSize,
+            Remarks = request?.Remarks,
+            DataAugmentation = request?.DataAugmentation ?? (defaults.DataAugmentation with { }),
+            DataBalancing = request?.DataBalancing ?? (defaults.DataBalancing with { })
+        };
+
+        var jobId = await trainingJobService.StartTrainingAsync(trainingRequest, cancellationToken);
+        return Results.Ok(new { JobId = jobId });
     }
-    
+
     /// <summary>
     /// 获取训练状态
     /// </summary>
     private static async Task<IResult> GetTrainingStatusAsync(
-        Guid taskId,
-        [FromServices] ITrainingService trainingService,
+        Guid jobId,
+        [FromServices] ITrainingJobService trainingJobService,
         CancellationToken cancellationToken)
     {
-        var status = await trainingService.GetStatusAsync(taskId, cancellationToken);
-        return status is not null 
-            ? Results.Ok(status) 
+        var status = await trainingJobService.GetStatusAsync(jobId, cancellationToken);
+        return status is not null
+            ? Results.Ok(status)
             : Results.NotFound();
     }
 }

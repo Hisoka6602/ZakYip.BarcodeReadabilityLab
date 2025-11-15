@@ -11,13 +11,13 @@ using Serilog.Events;
 using ZakYip.BarcodeReadabilityLab.Service;
 using ZakYip.BarcodeReadabilityLab.Service.Configuration;
 using ZakYip.BarcodeReadabilityLab.Service.Endpoints;
-using ZakYip.BarcodeReadabilityLab.Service.Services;
-using ZakYip.BarcodeReadabilityLab.Service.Workers;
 using ZakYip.BarcodeReadabilityLab.Application.Extensions;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Extensions;
+using ZakYip.BarcodeReadabilityLab.Service.Services;
+using ZakYip.BarcodeReadabilityLab.Service.Workers;
 
 // 配置 Serilog 日志
 Log.Logger = new LoggerConfiguration()
@@ -76,11 +76,6 @@ builder.Services.AddSignalR()
 
 // 注册 DirectoryMonitoringWorker 后台服务
 builder.Services.AddHostedService<DirectoryMonitoringWorker>();
-
-// 注册传统服务（向后兼容）
-builder.Services.AddSingleton<IMLModelService, MLModelService>();
-builder.Services.AddSingleton<ITrainingService, TrainingService>();
-builder.Services.AddHostedService<ImageMonitoringService>();
 
 // 配置 HTTP API
 builder.Services.AddControllers()
