@@ -40,7 +40,16 @@ public class TrainingJobDbContext : DbContext
             
             entity.Property(e => e.ValidationSplitRatio)
                 .HasPrecision(18, 6);
-            
+
+            entity.Property(e => e.LearningRate)
+                .HasPrecision(18, 6);
+
+            entity.Property(e => e.Epochs)
+                .IsRequired();
+
+            entity.Property(e => e.BatchSize)
+                .IsRequired();
+
             entity.Property(e => e.Status)
                 .IsRequired()
                 .HasConversion<int>();

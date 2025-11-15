@@ -44,6 +44,9 @@ public class TrainingJobRepository : ITrainingJobRepository
         entity.TrainingRootDirectory = trainingJob.TrainingRootDirectory;
         entity.OutputModelDirectory = trainingJob.OutputModelDirectory;
         entity.ValidationSplitRatio = trainingJob.ValidationSplitRatio;
+        entity.LearningRate = trainingJob.LearningRate;
+        entity.Epochs = trainingJob.Epochs;
+        entity.BatchSize = trainingJob.BatchSize;
         entity.Status = trainingJob.Status;
         entity.Progress = trainingJob.Progress;
         entity.StartTime = trainingJob.StartTime;

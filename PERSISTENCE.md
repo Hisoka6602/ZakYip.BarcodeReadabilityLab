@@ -80,6 +80,9 @@ CREATE TABLE "TrainingJobs" (
     "TrainingRootDirectory" TEXT NOT NULL,
     "OutputModelDirectory" TEXT NOT NULL,
     "ValidationSplitRatio" TEXT NULL,
+    "LearningRate" TEXT NOT NULL,
+    "Epochs" INTEGER NOT NULL,
+    "BatchSize" INTEGER NOT NULL,
     "Status" INTEGER NOT NULL,
     "Progress" TEXT NOT NULL,
     "StartTime" TEXT NOT NULL,
@@ -110,6 +113,9 @@ CREATE INDEX "IX_TrainingJobs_StartTime" ON "TrainingJobs" ("StartTime");
 | TrainingRootDirectory | TEXT | 训练数据根目录路径 |
 | OutputModelDirectory | TEXT | 输出模型存放目录 |
 | ValidationSplitRatio | DECIMAL | 验证集分割比例（0.0-1.0） |
+| LearningRate | DECIMAL | 学习率（0-1 之间，不含 0） |
+| Epochs | INTEGER | 训练轮数（1-500） |
+| BatchSize | INTEGER | 批大小（1-512） |
 | Status | INTEGER | 任务状态（1=排队中, 2=运行中, 3=已完成, 4=失败, 5=已取消） |
 | Progress | DECIMAL | 进度百分比（0.0-1.0） |
 | StartTime | TEXT | 任务开始时间（ISO 8601） |

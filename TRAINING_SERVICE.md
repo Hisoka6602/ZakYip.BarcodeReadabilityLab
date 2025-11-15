@@ -284,6 +284,9 @@ noread-classifier-YYYYMMDD-HHmmss.zip
     "TrainingRootDirectory": "C:\\BarcodeImages\\TrainingData",
     "OutputModelDirectory": "C:\\BarcodeImages\\Models",
     "ValidationSplitRatio": 0.2,
+    "LearningRate": 0.01,
+    "Epochs": 50,
+    "BatchSize": 20,
     "MaxConcurrentTrainingJobs": 2,
     "EnableResourceMonitoring": true,
     "ResourceMonitoringIntervalSeconds": 10
@@ -296,6 +299,9 @@ noread-classifier-YYYYMMDD-HHmmss.zip
 - `TrainingRootDirectory`: 训练数据根目录路径
 - `OutputModelDirectory`: 输出模型文件存放目录路径
 - `ValidationSplitRatio`: 验证集分割比例（0.0 到 1.0 之间）
+- `LearningRate`: 学习率（0 到 1 之间，不含 0，默认 0.01）
+- `Epochs`: 训练轮数（正整数，默认 50，建议范围 10-200）
+- `BatchSize`: 批大小（正整数，默认 20，建议范围 8-128）
 - `MaxConcurrentTrainingJobs`: 最大并发训练任务数量（默认值：1，建议值：2-4，取决于系统资源）
 - `EnableResourceMonitoring`: 是否启用资源监控（默认值：false，启用后会定期记录 CPU 和内存使用情况）
 - `ResourceMonitoringIntervalSeconds`: 资源监控间隔（秒）（默认值：5，建议值：10-30）
@@ -378,6 +384,9 @@ curl -X POST http://localhost:5000/api/training-job/start \
     "trainingRootDirectory": "C:\\BarcodeImages\\TrainingData",
     "outputModelDirectory": "C:\\BarcodeImages\\Models",
     "validationSplitRatio": 0.2,
+    "learningRate": 0.01,
+    "epochs": 50,
+    "batchSize": 20,
     "remarks": "测试训练"
   }'
 ```
@@ -421,7 +430,7 @@ curl http://localhost:5000/api/training-job/status/3fa85f64-5717-4562-b3fc-2c963
 3. ~~支持多个训练任务并发执行~~ (已完成)
 4. ~~添加训练资源（CPU、内存）监控~~ (已完成)
 5. 支持训练任务取消
-6. 添加训练参数配置（学习率、训练轮数等）
+6. ~~添加训练参数配置（学习率、训练轮数等）~~ (已完成)
 7. 支持训练过程中的指标监控（损失函数值、验证集准确率等）
 8. 添加混淆矩阵可视化界面
 9. 支持导出详细的评估报告

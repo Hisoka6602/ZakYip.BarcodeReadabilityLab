@@ -508,6 +508,9 @@ API 监听地址在 `appsettings.json` 中配置：
   "trainingRootDirectory": "C:\\BarcodeImages\\TrainingData",
   "outputModelDirectory": "C:\\BarcodeImages\\Models",
   "validationSplitRatio": 0.2,
+  "learningRate": 0.01,
+  "epochs": 50,
+  "batchSize": 20,
   "remarks": "第一次训练测试"
 }
 ```
@@ -516,6 +519,9 @@ API 监听地址在 `appsettings.json` 中配置：
 - `trainingRootDirectory`（可选）：训练数据根目录路径。如果为空，使用配置文件中的默认值。
 - `outputModelDirectory`（可选）：训练输出模型文件存放目录路径。如果为空，使用配置文件中的默认值。
 - `validationSplitRatio`（可选）：验证集分割比例（0.0 到 1.0 之间）。
+- `learningRate`（可选）：学习率（0 到 1 之间，不含 0）。
+- `epochs`（可选）：训练轮数（正整数）。
+- `batchSize`（可选）：批大小（正整数）。
 - `remarks`（可选）：训练任务备注说明。
 
 **成功响应示例（200 OK）:**
@@ -546,7 +552,7 @@ curl -X POST http://localhost:5000/api/training/start \
 # 使用自定义参数启动训练
 curl -X POST http://localhost:5000/api/training/start \
   -H "Content-Type: application/json" \
-  -d "{\"trainingRootDirectory\":\"C:\\\\BarcodeImages\\\\TrainingData\",\"outputModelDirectory\":\"C:\\\\BarcodeImages\\\\Models\",\"validationSplitRatio\":0.2,\"remarks\":\"测试训练\"}"
+  -d "{\"trainingRootDirectory\":\"C:\\\\BarcodeImages\\\\TrainingData\",\"outputModelDirectory\":\"C:\\\\BarcodeImages\\\\Models\",\"validationSplitRatio\":0.2,\"learningRate\":0.01,\"epochs\":50,\"batchSize\":20,\"remarks\":\"测试训练\"}"
 ```
 
 **使用 PowerShell 示例:**
@@ -563,6 +569,9 @@ $body = @{
     trainingRootDirectory = "C:\BarcodeImages\TrainingData"
     outputModelDirectory = "C:\BarcodeImages\Models"
     validationSplitRatio = 0.2
+    learningRate = 0.01
+    epochs = 50
+    batchSize = 20
     remarks = "测试训练"
 } | ConvertTo-Json
 
@@ -588,6 +597,9 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/training/start" `
   "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "state": "运行中",
   "progress": 0.45,
+  "learningRate": 0.01,
+  "epochs": 50,
+  "batchSize": 20,
   "message": "训练任务正在执行",
   "startTime": "2024-01-15T10:30:00Z",
   "completedTime": null,
@@ -600,6 +612,9 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/training/start" `
 - `jobId`：训练任务唯一标识符
 - `state`：训练任务状态描述（排队中、运行中、已完成、失败、已取消）
 - `progress`：训练进度百分比（0.0 到 1.0 之间，可选）
+- `learningRate`：任务使用的学习率
+- `epochs`：任务使用的训练轮数
+- `batchSize`：任务使用的批大小
 - `message`：响应消息
 - `startTime`：训练开始时间（可选）
 - `completedTime`：训练完成时间（可选）
@@ -648,12 +663,71 @@ Invoke-RestMethod -Uri "http://localhost:5000/api/training/status/$jobId" -Metho
 - 服务会持续执行目录监控和推理逻辑，与 API 调用互不干扰
 - 建议使用轮询方式定期查询训练状态，避免频繁请求
 
+## 本次更新概览（2024-05-08）
+
+### 更新内容
+
+- 在训练 API 中引入学习率、Epoch 数、Batch Size 三个超参数，并提供严格的服务器端校验。
+- 将 ML.NET 训练器切换为 `ImageClassificationTrainer`，支持自定义超参数并输出训练过程指标日志。
+- 更新训练任务持久化、状态查询与响应模型，确保超参数在数据库、历史记录和 API 返回值中全链路透传。
+- 新增《训练超参数推荐配置》文档，并在 README/训练文档中补充示例与说明。
+
+### 可继续完善的内容
+
+- 支持基于硬件能力的自动超参数推荐或搜索策略。
+- 为训练任务新增取消/暂停能力，便于在超参数不理想时及时终止。
+- 在前端或监控界面中可视化展示训练过程的准确率、损失曲线。
+
+### 涉及文件与说明
+
+```
+src/ZakYip.BarcodeReadabilityLab.Application/
+├── Options/
+│   └── TrainingOptions.cs                        # 定义训练超参数默认值与并发配置
+├── Services/
+│   ├── TrainingJobService.cs                     # 超参数校验、任务入队和状态映射
+│   ├── TrainingJobStatus.cs                      # 在任务状态中携带超参数
+│   └── TrainingRequest.cs                        # 训练请求契约新增必选超参数
+└── Workers/
+    └── TrainingWorker.cs                         # 调用训练器时传递超参数并记录日志
+
+src/ZakYip.BarcodeReadabilityLab.Service/
+├── Endpoints/
+│   └── TrainingEndpoints.cs                      # API 请求/响应中透传超参数
+├── Models/
+│   ├── StartTrainingRequest.cs                   # 接受客户端自定义超参数
+│   └── TrainingJobResponse.cs                    # 返回训练任务的超参数配置
+└── appsettings.json                              # TrainingOptions 默认超参数配置
+
+src/ZakYip.BarcodeReadabilityLab.Core/
+└── Domain/Models/TrainingJob.cs                  # 领域模型存储超参数信息
+
+src/ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence/
+├── Data/TrainingJobDbContext.cs                  # 为超参数列配置精度与约束
+├── Entities/TrainingJobEntity.cs                 # 数据实体映射超参数字段
+└── Repositories/TrainingJobRepository.cs         # 更新持久化流程以保存超参数
+
+src/ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet/
+├── Contracts/IImageClassificationTrainer.cs      # 训练器接口新增超参数签名
+├── Services/MlNetImageClassificationTrainer.cs   # 使用 ImageClassificationTrainer 并响应超参数
+└── ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.csproj  # 引入 Microsoft.ML.Vision 包
+
+docs/
+├── TRAINING_HYPERPARAMETER_GUIDE.md              # 新增超参数推荐与调优指南
+└── ...
+
+PERSISTENCE.md                                    # 训练任务表结构补充超参数字段
+TRAINING_SERVICE.md                               # 文档更新超参数配置与示例
+README.md                                         # 补充 API 字段、示例以及更新概览
+```
+
 ## 相关文档
 
 - **[QUICKSTART.md](QUICKSTART.md)** - 5 分钟快速上手指南
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - 项目架构详细说明
 - **[USAGE.md](USAGE.md)** - 详细使用示例和场景
 - **[TRAINING_SERVICE.md](TRAINING_SERVICE.md)** - 训练服务详细说明
+- **[TRAINING_HYPERPARAMETER_GUIDE.md](docs/TRAINING_HYPERPARAMETER_GUIDE.md)** - 训练超参数推荐配置
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Windows 服务部署指南
 - **[WINDOWS_SERVICE_SETUP.md](WINDOWS_SERVICE_SETUP.md)** - Windows 服务设置指南
 
