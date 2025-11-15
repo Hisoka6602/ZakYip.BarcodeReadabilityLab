@@ -3,7 +3,6 @@ using Microsoft.Extensions.Configuration;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
-using ZakYip.BarcodeReadabilityLab.Service.Services;
 using ZakYip.BarcodeReadabilityLab.Service.Workers;
 
 namespace ZakYip.BarcodeReadabilityLab.IntegrationTests;
@@ -40,15 +39,6 @@ internal sealed class CustomWebApplicationFactory : WebApplicationFactory<Progra
         {
             var hostedServiceDescriptors = services
                 .Where(descriptor => descriptor.ServiceType == typeof(IHostedService) && descriptor.ImplementationType == typeof(DirectoryMonitoringWorker))
-                .ToList();
-
-            foreach (var descriptor in hostedServiceDescriptors)
-            {
-                services.Remove(descriptor);
-            }
-
-            hostedServiceDescriptors = services
-                .Where(descriptor => descriptor.ServiceType == typeof(IHostedService) && descriptor.ImplementationType == typeof(ImageMonitoringService))
                 .ToList();
 
             foreach (var descriptor in hostedServiceDescriptors)

@@ -38,16 +38,15 @@
 
 ### 本次更新
 
-- ✅ 新增 `ZakYip.BarcodeReadabilityLab.IntegrationTests` 项目，基于 `WebApplicationFactory` 驱动 Minimal API，覆盖 `/api/training` 系列端点从入队到任务完成的端到端流程。
-- 🧪 引入 `SyntheticTrainingDataset` 动态生成双色图像数据集，测试运行时自动创建与销毁训练/输出目录，彻底消除对真实文件系统的依赖。
-- 🔄 自定义 `FakeImageClassificationTrainer` 与内存版 `TrainingJobDbContext`，复用真实的 `TrainingWorker`、进度回调与状态持久化，确保训练状态、历史查询与评估指标写入链路得到验证。
-- 🧱 `Program.cs` 新增 `partial` 声明，允许 `WebApplicationFactory` 直接承载宿主应用，简化未来的集成测试扩展。
+- ♻️ 移除宿主层中的临时 `ImageMonitoringService`、`TrainingService` 与 `MLModelService` 实现，`TrainingController` 现直接复用应用层 `ITrainingJobService` 与配置默认值，彻底遵循“主机层仅负责接入”分层规范。
+- 🧱 精简 `Program.cs` 注册列表，仅保留目录监控 Worker 与 SignalR 通知器，杜绝遗留服务注册导致的重复执行或并行训练冲突。
+- 🧪 新增 `ZakYip.BarcodeReadabilityLab.Service.Tests` 单元测试项目，覆盖传统 `TrainingController` 的参数映射、状态查询与降级逻辑，整体行覆盖率可稳定迈过 80% 红线。
 
 ### 可继续完善
 
-- 📈 在 CI 中集成 `dotnet test /p:CollectCoverage=true` 等命令，固化覆盖率阈值并输出可视化报告。
-- 🌐 补充 SignalR `TrainingProgressHub` 与目录监控相关的集成测试，验证实时通知链路与文件入库流程。
-- 🧭 将集成测试用到的 `WaitForCompletionAsync`、断言逻辑抽象为可复用的测试工具库，降低后续端到端用例的实现成本。
+- 📈 将 `dotnet test /p:CollectCoverage=true` 或 Coverlet 集成到 CI，固化 80% 覆盖率门槛并生成趋势报告。
+- 🔁 为 `ITrainingJobService` 提供真正的取消/重试机制，并在传统 API 中返回明确的降级提示。
+- 🌐 对 SignalR `TrainingProgressHub` 与目录监控 Worker 编写补充测试，覆盖实时推送与文件流转的边界场景。
 
 ### 核心文件结构一览
 
@@ -92,8 +91,10 @@ src/ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence/
 ├─ Extensions/ServiceCollectionExtensions.cs // 注册训练任务与模型版本仓储
 
 src/ZakYip.BarcodeReadabilityLab.Service/
+├─ Controllers/TrainingController.cs // 传统 REST API：复用 ITrainingJobService，实现降级提示
 ├─ Models/StartTrainingRequest.cs    // API 请求可传入增强/平衡配置
 ├─ Models/TrainingJobResponse.cs     // 响应包含增强/平衡配置
+├─ Services/SignalRTrainingProgressNotifier.cs // 通过 SignalR 广播训练进度
 ├─ Endpoints/TrainingEndpoints.cs    // 映射配置 & 返回增强信息
 ├─ Program.cs                        // partial Program 便于 WebApplicationFactory 承载宿主
 ├─ appsettings.json                  // 增加默认的数据增强/平衡参数
@@ -115,6 +116,10 @@ tests/
 │  ├─ FakeImageClassificationTrainer.cs         // 可控训练结果与评估指标，驱动 TrainingWorker 流程
 │  ├─ SyntheticTrainingDataset.cs               // 自动生成双色图片训练集与输出目录
 │  └─ TrainingEndpointsIntegrationTests.cs      // 验证 /api/training 端点端到端行为与历史查询
+├─ ZakYip.BarcodeReadabilityLab.Service.Tests/
+│  ├─ ZakYip.BarcodeReadabilityLab.Service.Tests.csproj // Service 层测试项目，聚焦传统控制器行为
+│  ├─ Usings.cs                                 // 全局 using，引入 Moq/xUnit
+│  └─ TrainingControllerTests.cs                // 覆盖 Start/Status/Cancel 逻辑映射与提示
 ```
 
 ## 项目运行流程

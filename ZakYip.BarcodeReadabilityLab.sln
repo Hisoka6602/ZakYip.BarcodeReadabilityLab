@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.IntegrationTests", "tests\ZakYip.BarcodeReadabilityLab.IntegrationTests\ZakYip.BarcodeReadabilityLab.IntegrationTests.csproj", "{A219C1C8-A10D-416D-B1BD-F9BD75186496}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZakYip.BarcodeReadabilityLab.Service.Tests", "tests\ZakYip.BarcodeReadabilityLab.Service.Tests\ZakYip.BarcodeReadabilityLab.Service.Tests.csproj", "{A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}"
+EndProject
 
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -130,8 +132,20 @@ Global
                 {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|x64.Build.0 = Release|Any CPU
                 {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|x86.ActiveCfg = Release|Any CPU
                 {A219C1C8-A10D-416D-B1BD-F9BD75186496}.Release|x86.Build.0 = Release|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Debug|x64.ActiveCfg = Debug|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Debug|x64.Build.0 = Debug|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Debug|x86.ActiveCfg = Debug|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Debug|x86.Build.0 = Debug|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Release|Any CPU.Build.0 = Release|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Release|x64.ActiveCfg = Release|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Release|x64.Build.0 = Release|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Release|x86.ActiveCfg = Release|Any CPU
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F}.Release|x86.Build.0 = Release|Any CPU
         EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
+        GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
@@ -143,5 +157,6 @@ Global
                 {016D6D56-4BA1-400F-AC40-97E906A1508F} = {50F6592E-178E-476F-90F4-7C81016DCA96}
                 {1862551D-F243-4096-9E38-6817DD47FCBA} = {50F6592E-178E-476F-90F4-7C81016DCA96}
                 {A219C1C8-A10D-416D-B1BD-F9BD75186496} = {50F6592E-178E-476F-90F4-7C81016DCA96}
+                {A196BBFA-59FF-4D8C-84FE-BE3914B2E76F} = {50F6592E-178E-476F-90F4-7C81016DCA96}
         EndGlobalSection
 EndGlobal
