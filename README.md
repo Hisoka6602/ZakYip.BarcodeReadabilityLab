@@ -38,16 +38,16 @@
 
 ### 本次更新
 
-- ✅ 新增 `ZakYip.BarcodeReadabilityLab.Core.Tests` 与 `ZakYip.BarcodeReadabilityLab.Application.Tests` 单元测试项目，统一使用 xUnit + Moq，实现 Core 与 Application 层的自动化验证。
-- 🔒 为 `TrainingJobService` 构建覆盖参数校验、队列操作、状态迁移与并发槽位的测试，利用 `InternalsVisibleTo` 暴露内部方法，保障关键业务逻辑在异常路径下亦可捕获。
-- 🧰 调整解决方案结构（新增 `tests` 解决方案文件夹）并补充 `AssemblyInfo`，确保新测试项目能正确引用内部类型并随主解决方案一起构建。
-- 📝 README 同步新增测试目录说明、覆盖率目标与后续优化建议，方便快速定位测试资产。
+- ✅ 新增 `ZakYip.BarcodeReadabilityLab.IntegrationTests` 项目，基于 `WebApplicationFactory` 驱动 Minimal API，覆盖 `/api/training` 系列端点从入队到任务完成的端到端流程。
+- 🧪 引入 `SyntheticTrainingDataset` 动态生成双色图像数据集，测试运行时自动创建与销毁训练/输出目录，彻底消除对真实文件系统的依赖。
+- 🔄 自定义 `FakeImageClassificationTrainer` 与内存版 `TrainingJobDbContext`，复用真实的 `TrainingWorker`、进度回调与状态持久化，确保训练状态、历史查询与评估指标写入链路得到验证。
+- 🧱 `Program.cs` 新增 `partial` 声明，允许 `WebApplicationFactory` 直接承载宿主应用，简化未来的集成测试扩展。
 
 ### 可继续完善
 
-- 📈 引入 `dotnet test /p:CollectCoverage=true` 等命令在 CI 中强制覆盖率阈值（>70%），并将结果输出为报告，验证本地手动执行的准确性。
-- 🔁 为基础设施层与宿主层补充集成测试/端到端测试，模拟目录监听到模型训练的完整流程，进一步提高整体置信度。
-- 🧭 在测试夹具中引入自定义数据构造器与断言扩展，减少重复样板代码并增强可维护性。
+- 📈 在 CI 中集成 `dotnet test /p:CollectCoverage=true` 等命令，固化覆盖率阈值并输出可视化报告。
+- 🌐 补充 SignalR `TrainingProgressHub` 与目录监控相关的集成测试，验证实时通知链路与文件入库流程。
+- 🧭 将集成测试用到的 `WaitForCompletionAsync`、断言逻辑抽象为可复用的测试工具库，降低后续端到端用例的实现成本。
 
 ### 核心文件结构一览
 
@@ -95,6 +95,7 @@ src/ZakYip.BarcodeReadabilityLab.Service/
 ├─ Models/StartTrainingRequest.cs    // API 请求可传入增强/平衡配置
 ├─ Models/TrainingJobResponse.cs     // 响应包含增强/平衡配置
 ├─ Endpoints/TrainingEndpoints.cs    // 映射配置 & 返回增强信息
+├─ Program.cs                        // partial Program 便于 WebApplicationFactory 承载宿主
 ├─ appsettings.json                  // 增加默认的数据增强/平衡参数
 
 tests/
@@ -108,6 +109,12 @@ tests/
 │  ├─ ZakYip.BarcodeReadabilityLab.Application.Tests.csproj // Application 层测试项目，引用 Core & Application
 │  ├─ Usings.cs                                 // 全局 using 引入 Moq/xUnit
 │  └─ TrainingJobServiceTests.cs                // 覆盖训练服务入队、验证与状态迁移逻辑
+├─ ZakYip.BarcodeReadabilityLab.IntegrationTests/
+│  ├─ ZakYip.BarcodeReadabilityLab.IntegrationTests.csproj // 集成测试项目，引用 Service 层与基础设施实现
+│  ├─ CustomWebApplicationFactory.cs            // 自定义宿主：替换 DbContext、停用目录监控、注入假训练器
+│  ├─ FakeImageClassificationTrainer.cs         // 可控训练结果与评估指标，驱动 TrainingWorker 流程
+│  ├─ SyntheticTrainingDataset.cs               // 自动生成双色图片训练集与输出目录
+│  └─ TrainingEndpointsIntegrationTests.cs      // 验证 /api/training 端点端到端行为与历史查询
 ```
 
 ## 项目运行流程
