@@ -1,5 +1,6 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Models;
 
 /// <summary>
@@ -16,6 +17,8 @@ public interface IImageClassificationTrainer
     /// <param name="epochs">训练轮数（Epoch）</param>
     /// <param name="batchSize">批大小（Batch Size）</param>
     /// <param name="validationSplitRatio">验证集分割比例（0.0 到 1.0 之间，可选）</param>
+    /// <param name="dataAugmentationOptions">数据增强配置（可选）</param>
+    /// <param name="dataBalancingOptions">数据平衡配置（可选）</param>
     /// <param name="progressCallback">训练进度回调（可选）</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>训练结果，包含模型文件路径和评估指标</returns>
@@ -26,6 +29,8 @@ public interface IImageClassificationTrainer
         int epochs,
         int batchSize,
         decimal? validationSplitRatio = null,
+        DataAugmentationOptions? dataAugmentationOptions = null,
+        DataBalancingOptions? dataBalancingOptions = null,
         ITrainingProgressCallback? progressCallback = null,
         CancellationToken cancellationToken = default);
 }

@@ -97,7 +97,9 @@ public static class TrainingEndpoints
                 LearningRate = request?.LearningRate ?? defaultOptions.LearningRate,
                 Epochs = request?.Epochs ?? defaultOptions.Epochs,
                 BatchSize = request?.BatchSize ?? defaultOptions.BatchSize,
-                Remarks = request?.Remarks
+                Remarks = request?.Remarks,
+                DataAugmentation = request?.DataAugmentation ?? (defaultOptions.DataAugmentation with { }),
+                DataBalancing = request?.DataBalancing ?? (defaultOptions.DataBalancing with { })
             };
 
             logger.LogInformation("收到训练任务请求，训练目录: {TrainingRootDirectory}",
@@ -177,7 +179,10 @@ public static class TrainingEndpoints
                 StartTime = status.StartTime,
                 CompletedTime = status.CompletedTime,
                 ErrorMessage = status.ErrorMessage,
-                Remarks = status.Remarks
+                Remarks = status.Remarks,
+                DataAugmentation = status.DataAugmentation,
+                DataBalancing = status.DataBalancing,
+                EvaluationMetrics = status.EvaluationMetrics
             };
 
             return Results.Ok(response);
@@ -224,7 +229,10 @@ public static class TrainingEndpoints
                 StartTime = status.StartTime,
                 CompletedTime = status.CompletedTime,
                 ErrorMessage = status.ErrorMessage,
-                Remarks = status.Remarks
+                Remarks = status.Remarks,
+                DataAugmentation = status.DataAugmentation,
+                DataBalancing = status.DataBalancing,
+                EvaluationMetrics = status.EvaluationMetrics
             }).ToList();
 
             logger.LogInformation("返回 {Count} 条训练任务历史记录", response.Count);

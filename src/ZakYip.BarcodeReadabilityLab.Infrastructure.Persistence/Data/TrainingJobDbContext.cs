@@ -97,6 +97,10 @@ public class TrainingJobDbContext : DbContext
 
             entity.Property(e => e.PerClassMetricsJson);
 
+            entity.Property(e => e.DataAugmentationOptionsJson);
+            entity.Property(e => e.DataBalancingOptionsJson);
+            entity.Property(e => e.DataAugmentationImpactJson);
+
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartTime);
         });

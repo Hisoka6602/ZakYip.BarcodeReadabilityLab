@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 
 /// <summary>
@@ -152,6 +153,26 @@ public sealed class TrainingWorker : BackgroundService
                 request.BatchSize,
                 request.ValidationSplitRatio ?? 0.0m);
 
+            if (request.DataAugmentation.Enable)
+            {
+                _logger.LogInformation(
+                    "执行训练前的数据增强配置 => 副本数: {Copies}, 旋转概率: {RotationProbability:P0}, 水平翻转概率: {HorizontalProbability:P0}, 垂直翻转概率: {VerticalProbability:P0}, 亮度概率: {BrightnessProbability:P0}",
+                    request.DataAugmentation.AugmentedImagesPerSample,
+                    request.DataAugmentation.RotationProbability,
+                    request.DataAugmentation.HorizontalFlipProbability,
+                    request.DataAugmentation.VerticalFlipProbability,
+                    request.DataAugmentation.BrightnessProbability);
+            }
+
+            if (request.DataBalancing.Strategy != DataBalancingStrategy.None)
+            {
+                _logger.LogInformation(
+                    "执行训练前的数据平衡配置 => 策略: {Strategy}, 目标样本数: {Target}, 是否乱序: {Shuffle}",
+                    request.DataBalancing.Strategy,
+                    request.DataBalancing.TargetSampleCountPerClass,
+                    request.DataBalancing.ShuffleAfterBalancing);
+            }
+
             var trainingResult = await _trainer.TrainAsync(
                 request.TrainingRootDirectory,
                 request.OutputModelDirectory,
@@ -159,6 +180,8 @@ public sealed class TrainingWorker : BackgroundService
                 request.Epochs,
                 request.BatchSize,
                 request.ValidationSplitRatio,
+                request.DataAugmentation,
+                request.DataBalancing,
                 progressCallback,
                 cancellationToken);
 

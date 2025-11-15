@@ -1,5 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Repositories;
 
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
@@ -12,6 +14,11 @@ using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Entities;
 public class TrainingJobRepository : ITrainingJobRepository
 {
     private readonly TrainingJobDbContext _context;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     public TrainingJobRepository(TrainingJobDbContext context)
     {
@@ -53,6 +60,38 @@ public class TrainingJobRepository : ITrainingJobRepository
         entity.CompletedTime = trainingJob.CompletedTime;
         entity.ErrorMessage = trainingJob.ErrorMessage;
         entity.Remarks = trainingJob.Remarks;
+
+        entity.DataAugmentationOptionsJson = JsonSerializer.Serialize(trainingJob.DataAugmentation, JsonOptions);
+        entity.DataBalancingOptionsJson = JsonSerializer.Serialize(trainingJob.DataBalancing, JsonOptions);
+
+        if (trainingJob.EvaluationMetrics is { } metrics)
+        {
+            entity.Accuracy = metrics.Accuracy;
+            entity.MacroPrecision = metrics.MacroPrecision;
+            entity.MacroRecall = metrics.MacroRecall;
+            entity.MacroF1Score = metrics.MacroF1Score;
+            entity.MicroPrecision = metrics.MicroPrecision;
+            entity.MicroRecall = metrics.MicroRecall;
+            entity.MicroF1Score = metrics.MicroF1Score;
+            entity.LogLoss = metrics.LogLoss;
+            entity.ConfusionMatrixJson = metrics.ConfusionMatrixJson;
+            entity.PerClassMetricsJson = metrics.PerClassMetricsJson;
+            entity.DataAugmentationImpactJson = metrics.DataAugmentationImpactJson;
+        }
+        else
+        {
+            entity.Accuracy = null;
+            entity.MacroPrecision = null;
+            entity.MacroRecall = null;
+            entity.MacroF1Score = null;
+            entity.MicroPrecision = null;
+            entity.MicroRecall = null;
+            entity.MicroF1Score = null;
+            entity.LogLoss = null;
+            entity.ConfusionMatrixJson = null;
+            entity.PerClassMetricsJson = null;
+            entity.DataAugmentationImpactJson = null;
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
     }

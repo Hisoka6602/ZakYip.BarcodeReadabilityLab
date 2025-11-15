@@ -1,10 +1,13 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Services;
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML;
 using Microsoft.ML.Data;
 using Microsoft.ML.Vision;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
@@ -33,6 +36,11 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 {
     private readonly ILogger<MlNetImageClassificationTrainer> _logger;
     private readonly MLContext _mlContext;
+    private static readonly JsonSerializerOptions _jsonSerializerOptions = new()
+    {
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
 
     public MlNetImageClassificationTrainer(ILogger<MlNetImageClassificationTrainer> logger)
     {
@@ -48,89 +56,169 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         int epochs,
         int batchSize,
         decimal? validationSplitRatio = null,
+        DataAugmentationOptions? dataAugmentationOptions = null,
+        DataBalancingOptions? dataBalancingOptions = null,
         ITrainingProgressCallback? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         ValidateParameters(trainingRootDirectory, outputModelDirectory, learningRate, epochs, batchSize);
 
+        var augmentationOptions = dataAugmentationOptions ?? new DataAugmentationOptions();
+        var balancingOptions = dataBalancingOptions ?? new DataBalancingOptions();
+        var cleanupDirectories = new List<string>();
+
         _logger.LogInformation(
-            "开始训练任务 => 训练根目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}, 验证比例: {ValidationSplitRatio}, 学习率: {LearningRate}, Epochs: {Epochs}, BatchSize: {BatchSize}",
+            "开始训练任务 => 训练根目录: {TrainingRootDirectory}, 输出目录: {OutputModelDirectory}, 验证比例: {ValidationSplitRatio}, 学习率: {LearningRate}, Epochs: {Epochs}, BatchSize: {BatchSize}, 数据增强: {AugmentationEnabled}, 数据平衡: {BalancingStrategy}",
             trainingRootDirectory,
             outputModelDirectory,
             validationSplitRatio ?? 0.0m,
             learningRate,
             epochs,
-            batchSize);
+            batchSize,
+            augmentationOptions.Enable,
+            balancingOptions.Strategy);
 
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 报告进度：开始扫描数据
             progressCallback?.ReportProgress(0.05m, "开始扫描训练数据");
 
-            // 扫描训练数据
             var trainingData = ScanTrainingData(trainingRootDirectory);
-            _logger.LogInformation("扫描到训练样本 => 总数: {Count}, 标签分布详情见后续日志", trainingData.Count);
+            _logger.LogInformation("扫描到训练样本 => 总数: {Count}", trainingData.Count);
 
             if (trainingData.Count == 0)
             {
                 throw new TrainingException("训练根目录中没有找到任何训练样本", "NO_TRAINING_DATA");
             }
 
+            var originalDistribution = CountByLabel(trainingData);
+            _logger.LogInformation("原始标签分布 => {Distribution}", FormatDistribution(originalDistribution));
+
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 报告进度：加载数据
-            progressCallback?.ReportProgress(0.15m, "加载训练数据到内存");
+            progressCallback?.ReportProgress(0.12m, "应用数据平衡策略");
+            var balancedTrainingData = ApplyDataBalancing(trainingData, balancingOptions, out var balancedDistribution);
+            _logger.LogInformation(
+                "数据平衡完成 => 策略: {Strategy}, 样本数: {Count}",
+                balancingOptions.Strategy,
+                balancedTrainingData.Count);
+            _logger.LogInformation("平衡后标签分布 => {Distribution}", FormatDistribution(balancedDistribution));
 
-            // 加载数据到 ML.NET
-            var dataView = _mlContext.Data.LoadFromEnumerable(trainingData);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            // 分割数据为训练集和测试集
+            var augmentationWorkspace = Path.Combine(outputModelDirectory, "ml-workspace", $"augment-train-{Guid.NewGuid():N}");
+            var augmentationResult = ApplyDataAugmentation(balancedTrainingData, augmentationOptions, augmentationWorkspace, cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(augmentationResult.WorkspaceDirectory))
+            {
+                cleanupDirectories.Add(augmentationResult.WorkspaceDirectory);
+            }
+
+            var finalTrainingData = balancedTrainingData.Concat(augmentationResult.Samples).ToList();
+
+            if (augmentationOptions.ShuffleAugmentedData && finalTrainingData.Count > 1)
+            {
+                var shuffleRandom = new Random(augmentationOptions.RandomSeed);
+                finalTrainingData = finalTrainingData.OrderBy(_ => shuffleRandom.Next()).ToList();
+            }
+
+            var finalDistribution = CountByLabel(finalTrainingData);
+
+            var datasetSummary = new DataAugmentationDatasetSummary
+            {
+                OriginalSamples = trainingData.Count,
+                BalancedSamples = balancedTrainingData.Count,
+                AugmentedSamples = augmentationResult.Samples.Count,
+                TotalSamples = finalTrainingData.Count,
+                OriginalDistribution = new Dictionary<string, int>(originalDistribution, StringComparer.OrdinalIgnoreCase),
+                BalancedDistribution = new Dictionary<string, int>(balancedDistribution, StringComparer.OrdinalIgnoreCase),
+                FinalDistribution = new Dictionary<string, int>(finalDistribution, StringComparer.OrdinalIgnoreCase),
+                OperationUsage = new Dictionary<string, int>(augmentationResult.OperationUsage, StringComparer.OrdinalIgnoreCase)
+            };
+
+            if (augmentationResult.Samples.Count > 0)
+            {
+                _logger.LogInformation("数据增强完成 => 新增样本数: {Count}", augmentationResult.Samples.Count);
+                _logger.LogInformation("增强后标签分布 => {Distribution}", FormatDistribution(finalDistribution));
+
+                if (augmentationResult.OperationUsage.Count > 0)
+                {
+                    var usageDetails = string.Join(", ", augmentationResult.OperationUsage.Select(pair => $"{pair.Key}:{pair.Value}"));
+                    _logger.LogInformation("增强操作使用统计 => {Usage}", usageDetails);
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            progressCallback?.ReportProgress(0.18m, $"准备训练数据，共 {finalTrainingData.Count} 条样本");
+
+            var dataView = _mlContext.Data.LoadFromEnumerable(finalTrainingData);
+
             var splitRatio = validationSplitRatio ?? 0.2m;
             var trainTestSplit = _mlContext.Data.TrainTestSplit(dataView, testFraction: (double)splitRatio);
 
-            _logger.LogInformation("数据集分割 => 训练集比例: {TrainRatio:P0}, 测试集比例: {TestRatio:P0}", 
-                1.0m - splitRatio, splitRatio);
+            _logger.LogInformation("数据集分割 => 训练集比例: {TrainRatio:P0}, 测试集比例: {TestRatio:P0}", 1.0m - splitRatio, splitRatio);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 报告进度：构建训练管道
             progressCallback?.ReportProgress(0.25m, "构建训练管道");
 
-            // 构建训练管道
             var trainerOptions = BuildTrainerOptions(learningRate, epochs, batchSize, outputModelDirectory, progressCallback);
             var pipeline = BuildTrainingPipeline(trainerOptions);
 
+            var uniqueLabels = finalTrainingData
+                .Select(d => d.Label)
+                .Distinct()
+                .OrderBy(label => label)
+                .ToList();
+
             _logger.LogInformation("开始训练模型...");
 
-            // 报告进度：开始训练
             progressCallback?.ReportProgress(0.30m, "开始训练模型");
 
-            // 执行训练（使用训练集）
             var trainedModel = await Task.Run(() => pipeline.Fit(trainTestSplit.TrainSet), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 报告进度：评估模型
             progressCallback?.ReportProgress(0.80m, "评估模型性能");
 
-            // 在测试集上评估模型
-            var evaluationMetrics = EvaluateModel(trainedModel, trainTestSplit.TestSet, trainingData);
+            var evaluationMetrics = EvaluateModel(trainedModel, trainTestSplit.TestSet, uniqueLabels);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 报告进度：训练完成，保存模型
+            var testSamples = _mlContext.Data.CreateEnumerable<TrainingImageData>(trainTestSplit.TestSet, reuseRowObject: false).ToList();
+
+            var augmentationImpact = BuildAugmentationImpact(
+                augmentationOptions,
+                balancingOptions,
+                datasetSummary,
+                evaluationMetrics,
+                uniqueLabels,
+                testSamples,
+                trainedModel,
+                outputModelDirectory,
+                cleanupDirectories,
+                cancellationToken);
+
+            if (augmentationImpact is not null)
+            {
+                var impactJson = JsonSerializer.Serialize(augmentationImpact, _jsonSerializerOptions);
+                evaluationMetrics = evaluationMetrics with { DataAugmentationImpactJson = impactJson };
+                _logger.LogInformation("数据增强影响评估 => {Report}", impactJson);
+            }
+
             progressCallback?.ReportProgress(0.90m, "训练完成，保存模型");
 
-            // 保存模型
             var modelFilePath = SaveModel(trainedModel, trainTestSplit.TrainSet.Schema, outputModelDirectory);
 
-            // 报告进度：完成
             progressCallback?.ReportProgress(1.0m, "训练任务完成");
 
-            _logger.LogInformation("模型训练完成 => 模型路径: {ModelFilePath}, 训练样本数: {SampleCount}, 准确率: {Accuracy:P2}", 
-                modelFilePath, trainingData.Count, evaluationMetrics.Accuracy);
+            _logger.LogInformation(
+                "模型训练完成 => 模型路径: {ModelFilePath}, 最终样本数: {SampleCount}, 准确率: {Accuracy:P2}",
+                modelFilePath,
+                finalTrainingData.Count,
+                evaluationMetrics.Accuracy);
 
             return new TrainingResult
             {
@@ -145,14 +233,16 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         }
         catch (TrainingException)
         {
-            // 重新抛出自定义训练异常
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "训练任务失败 => 错误类型: {ExceptionType}, 目录: {TrainingRootDirectory}", 
-                ex.GetType().Name, trainingRootDirectory);
+            _logger.LogError(ex, "训练任务失败 => 错误类型: {ExceptionType}, 目录: {TrainingRootDirectory}", ex.GetType().Name, trainingRootDirectory);
             throw new TrainingException($"训练任务失败: {ex.Message}", "TRAINING_FAILED", ex);
+        }
+        finally
+        {
+            CleanupTemporaryDirectories(cleanupDirectories);
         }
     }
 
@@ -327,9 +417,9 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
     /// 评估模型性能
     /// </summary>
     private ModelEvaluationMetrics EvaluateModel(
-        ITransformer model, 
+        ITransformer model,
         IDataView testSet,
-        List<TrainingImageData> allTrainingData)
+        IReadOnlyList<string> uniqueLabels)
     {
         // 在测试集上进行预测
         var predictions = model.Transform(testSet);
@@ -338,25 +428,23 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         var metrics = _mlContext.MulticlassClassification.Evaluate(predictions, labelColumnName: "Label");
 
         _logger.LogInformation("模型评估指标 => 准确率: {Accuracy:P2}, 宏平均F1: {MacroF1:P2}, 微平均F1: {MicroF1:P2}, 对数损失: {LogLoss:F4}",
-            metrics.MacroAccuracy, 
+            metrics.MacroAccuracy,
             metrics.MacroAccuracy > 0 ? 2 * metrics.MacroAccuracy / (1 + metrics.MacroAccuracy) : 0,
             metrics.MicroAccuracy,
             metrics.LogLoss);
 
-        // 获取所有唯一标签
-        var uniqueLabels = allTrainingData
-            .Select(d => d.Label)
+        var labelList = uniqueLabels
             .Distinct()
-            .OrderBy(l => l)
+            .OrderBy(label => label)
             .ToList();
 
         // 计算混淆矩阵
         var confusionMatrix = metrics.ConfusionMatrix;
-        var confusionMatrixData = BuildConfusionMatrixData(confusionMatrix, uniqueLabels);
+        var confusionMatrixData = BuildConfusionMatrixData(confusionMatrix, labelList);
         var confusionMatrixJson = JsonSerializer.Serialize(confusionMatrixData);
 
         // 计算每个类别的指标
-        var perClassMetrics = CalculatePerClassMetrics(confusionMatrix, uniqueLabels);
+        var perClassMetrics = CalculatePerClassMetrics(confusionMatrix, labelList);
         var perClassMetricsJson = JsonSerializer.Serialize(perClassMetrics);
 
         // 计算宏平均和微平均指标
@@ -519,5 +607,389 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
             : 0.0;
 
         return ((decimal)microPrecision, (decimal)microRecall, (decimal)microF1);
+    }
+
+    private List<TrainingImageData> ApplyDataBalancing(
+        IReadOnlyList<TrainingImageData> sourceData,
+        DataBalancingOptions options,
+        out Dictionary<string, int> balancedDistribution)
+    {
+        if (options.Strategy == DataBalancingStrategy.None || sourceData.Count == 0)
+        {
+            var originalDistribution = CountByLabel(sourceData);
+            balancedDistribution = new Dictionary<string, int>(originalDistribution, StringComparer.OrdinalIgnoreCase);
+            return sourceData.ToList();
+        }
+
+        var grouped = sourceData
+            .GroupBy(sample => sample.Label)
+            .ToDictionary(group => group.Key, group => group.ToList(), StringComparer.OrdinalIgnoreCase);
+
+        if (grouped.Count == 0)
+        {
+            balancedDistribution = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            return new List<TrainingImageData>();
+        }
+
+        var random = new Random(options.RandomSeed);
+        var defaultTarget = options.Strategy == DataBalancingStrategy.OverSample
+            ? grouped.Max(pair => pair.Value.Count)
+            : grouped.Min(pair => pair.Value.Count);
+
+        var target = options.TargetSampleCountPerClass ?? defaultTarget;
+        target = Math.Max(target, 0);
+
+        var balanced = new List<TrainingImageData>();
+
+        foreach (var pair in grouped)
+        {
+            var samples = pair.Value;
+
+            if (samples.Count == 0)
+            {
+                continue;
+            }
+
+            if (options.Strategy == DataBalancingStrategy.OverSample)
+            {
+                var desiredCount = Math.Max(target, samples.Count);
+                var oversampled = new List<TrainingImageData>(samples);
+
+                while (oversampled.Count < desiredCount)
+                {
+                    var duplicate = samples[random.Next(samples.Count)];
+                    oversampled.Add(duplicate);
+                }
+
+                balanced.AddRange(oversampled);
+            }
+            else
+            {
+                var desiredCount = Math.Min(target, samples.Count);
+
+                if (desiredCount <= 0)
+                {
+                    continue;
+                }
+
+                var selected = samples
+                    .OrderBy(_ => random.Next())
+                    .Take(desiredCount);
+
+                balanced.AddRange(selected);
+            }
+        }
+
+        if (options.ShuffleAfterBalancing && balanced.Count > 1)
+        {
+            balanced = balanced.OrderBy(_ => random.Next()).ToList();
+        }
+
+        balancedDistribution = CountByLabel(balanced);
+        return balanced;
+    }
+
+    private AugmentationResult ApplyDataAugmentation(
+        IReadOnlyCollection<TrainingImageData> sourceData,
+        DataAugmentationOptions options,
+        string workspaceDirectory,
+        CancellationToken cancellationToken,
+        int? overrideCopiesPerSample = null,
+        int? randomSeedOverride = null)
+    {
+        var result = new AugmentationResult();
+
+        if (!options.Enable || sourceData.Count == 0)
+        {
+            return result;
+        }
+
+        var copiesPerSample = overrideCopiesPerSample ?? options.AugmentedImagesPerSample;
+        if (copiesPerSample <= 0)
+        {
+            return result;
+        }
+
+        Directory.CreateDirectory(workspaceDirectory);
+        result.WorkspaceDirectory = workspaceDirectory;
+
+        var randomSeed = randomSeedOverride ?? options.RandomSeed;
+        var random = new Random(randomSeed);
+
+        foreach (var sample in sourceData)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(sample.ImagePath) || !File.Exists(sample.ImagePath))
+            {
+                _logger.LogWarning("数据增强跳过 => 原始文件不存在: {ImagePath}", sample.ImagePath);
+                continue;
+            }
+
+            try
+            {
+                using var image = Image.Load(sample.ImagePath);
+
+                for (var index = 0; index < copiesPerSample; index++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    try
+                    {
+                        using var mutated = image.Clone(ctx => ApplyAugmentationOperations(ctx, options, random, result.OperationUsage));
+                        var fileName = $"{Path.GetFileNameWithoutExtension(sample.ImagePath)}_aug_{index}_{Guid.NewGuid():N}.png";
+                        var outputPath = Path.Combine(workspaceDirectory, fileName);
+                        mutated.Save(outputPath);
+
+                        result.Samples.Add(new TrainingImageData
+                        {
+                            ImagePath = outputPath,
+                            Label = sample.Label
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "生成增强样本失败 => 文件: {ImagePath}", sample.ImagePath);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "加载原始图像失败，跳过增强 => 文件: {ImagePath}", sample.ImagePath);
+            }
+        }
+
+        if (options.ShuffleAugmentedData && result.Samples.Count > 1)
+        {
+            var shuffleRandom = new Random(random.Next());
+            result.Samples = result.Samples.OrderBy(_ => shuffleRandom.Next()).ToList();
+        }
+
+        return result;
+    }
+
+    private void ApplyAugmentationOperations(
+        IImageProcessingContext context,
+        DataAugmentationOptions options,
+        Random random,
+        Dictionary<string, int> operationUsage)
+    {
+        var rotationApplied = false;
+
+        if (options.EnableRotation && options.RotationAngles.Length > 0 && random.NextDouble() <= options.RotationProbability)
+        {
+            var angleIndex = random.Next(options.RotationAngles.Length);
+            var angle = options.RotationAngles[angleIndex];
+
+            if (Math.Abs(angle) > float.Epsilon)
+            {
+                context.Rotate(angle);
+                rotationApplied = true;
+            }
+        }
+
+        if (rotationApplied)
+        {
+            IncrementOperationUsage(operationUsage, "rotation");
+        }
+
+        var horizontalApplied = false;
+
+        if (options.EnableHorizontalFlip && random.NextDouble() <= options.HorizontalFlipProbability)
+        {
+            context.Flip(FlipMode.Horizontal);
+            horizontalApplied = true;
+        }
+
+        if (horizontalApplied)
+        {
+            IncrementOperationUsage(operationUsage, "horizontalFlip");
+        }
+
+        var verticalApplied = false;
+
+        if (options.EnableVerticalFlip && random.NextDouble() <= options.VerticalFlipProbability)
+        {
+            context.Flip(FlipMode.Vertical);
+            verticalApplied = true;
+        }
+
+        if (verticalApplied)
+        {
+            IncrementOperationUsage(operationUsage, "verticalFlip");
+        }
+
+        if (options.EnableBrightnessAdjustment && random.NextDouble() <= options.BrightnessProbability)
+        {
+            var min = Math.Min(options.BrightnessLower, options.BrightnessUpper);
+            var max = Math.Max(options.BrightnessLower, options.BrightnessUpper);
+            var factor = min + (float)(random.NextDouble() * (max - min));
+
+            context.AdjustBrightness(factor);
+            IncrementOperationUsage(operationUsage, "brightness");
+        }
+    }
+
+    private static void IncrementOperationUsage(Dictionary<string, int> usage, string key)
+    {
+        if (usage.TryGetValue(key, out var count))
+        {
+            usage[key] = count + 1;
+        }
+        else
+        {
+            usage[key] = 1;
+        }
+    }
+
+    private DataAugmentationImpact BuildAugmentationImpact(
+        DataAugmentationOptions augmentationOptions,
+        DataBalancingOptions balancingOptions,
+        DataAugmentationDatasetSummary datasetSummary,
+        ModelEvaluationMetrics baseMetrics,
+        IReadOnlyList<string> uniqueLabels,
+        IReadOnlyList<TrainingImageData> testSamples,
+        ITransformer trainedModel,
+        string outputModelDirectory,
+        List<string> cleanupDirectories,
+        CancellationToken cancellationToken)
+    {
+        var isAugmentationApplied = augmentationOptions.Enable && datasetSummary.AugmentedSamples > 0;
+        var isBalancingApplied = balancingOptions.Strategy != DataBalancingStrategy.None;
+
+        DataAugmentationEvaluationSummary? evaluationSummary = null;
+
+        if (isAugmentationApplied && testSamples.Count > 0)
+        {
+            var evaluationWorkspace = Path.Combine(outputModelDirectory, "ml-workspace", $"augment-eval-{Guid.NewGuid():N}");
+            var evaluationCopies = Math.Max(1, augmentationOptions.EvaluationAugmentedImagesPerSample);
+
+            var augmentedTestResult = ApplyDataAugmentation(
+                testSamples,
+                augmentationOptions,
+                evaluationWorkspace,
+                cancellationToken,
+                evaluationCopies,
+                augmentationOptions.RandomSeed + 1);
+
+            if (!string.IsNullOrWhiteSpace(augmentedTestResult.WorkspaceDirectory))
+            {
+                cleanupDirectories.Add(augmentedTestResult.WorkspaceDirectory);
+            }
+
+            if (augmentedTestResult.Samples.Count > 0)
+            {
+                var augmentedDataView = _mlContext.Data.LoadFromEnumerable(augmentedTestResult.Samples);
+                var predictions = trainedModel.Transform(augmentedDataView);
+                var augmentedMetrics = _mlContext.MulticlassClassification.Evaluate(predictions, labelColumnName: "Label");
+
+                var labelList = uniqueLabels
+                    .Distinct()
+                    .OrderBy(label => label)
+                    .ToList();
+
+                var perClassMetrics = CalculatePerClassMetrics(augmentedMetrics.ConfusionMatrix, labelList);
+                var (macroPrecision, macroRecall, macroF1) = CalculateMacroAverageMetrics(perClassMetrics);
+                var (microPrecision, microRecall, microF1) = CalculateMicroAverageMetrics(augmentedMetrics.ConfusionMatrix);
+
+                evaluationSummary = new DataAugmentationEvaluationSummary
+                {
+                    OriginalSampleCount = testSamples.Count,
+                    AugmentedSampleCount = augmentedTestResult.Samples.Count,
+                    OriginalAccuracy = baseMetrics.Accuracy,
+                    AugmentedAccuracy = (decimal)augmentedMetrics.MacroAccuracy,
+                    OriginalMacroPrecision = baseMetrics.MacroPrecision,
+                    AugmentedMacroPrecision = macroPrecision,
+                    OriginalMacroRecall = baseMetrics.MacroRecall,
+                    AugmentedMacroRecall = macroRecall,
+                    OriginalMacroF1 = baseMetrics.MacroF1Score,
+                    AugmentedMacroF1 = macroF1,
+                    OriginalMicroPrecision = baseMetrics.MicroPrecision,
+                    AugmentedMicroPrecision = microPrecision,
+                    OriginalMicroRecall = baseMetrics.MicroRecall,
+                    AugmentedMicroRecall = microRecall,
+                    OriginalMicroF1 = baseMetrics.MicroF1Score,
+                    AugmentedMicroF1 = microF1
+                };
+            }
+        }
+
+        return new DataAugmentationImpact
+        {
+            IsAugmentationApplied = isAugmentationApplied,
+            IsBalancingApplied = isBalancingApplied,
+            AugmentationOptions = augmentationOptions,
+            BalancingOptions = balancingOptions,
+            Dataset = datasetSummary,
+            Evaluation = evaluationSummary
+        };
+    }
+
+    private static Dictionary<string, int> CountByLabel(IEnumerable<TrainingImageData> data)
+    {
+        var distribution = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var sample in data)
+        {
+            if (string.IsNullOrWhiteSpace(sample.Label))
+            {
+                continue;
+            }
+
+            if (distribution.TryGetValue(sample.Label, out var count))
+            {
+                distribution[sample.Label] = count + 1;
+            }
+            else
+            {
+                distribution[sample.Label] = 1;
+            }
+        }
+
+        return distribution;
+    }
+
+    private static string FormatDistribution(IReadOnlyDictionary<string, int> distribution)
+    {
+        if (distribution.Count == 0)
+        {
+            return "空";
+        }
+
+        var parts = distribution
+            .OrderBy(pair => pair.Key)
+            .Select(pair => $"{pair.Key}:{pair.Value}");
+
+        return string.Join(", ", parts);
+    }
+
+    private void CleanupTemporaryDirectories(IEnumerable<string> directories)
+    {
+        foreach (var directory in directories)
+        {
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                continue;
+            }
+
+            try
+            {
+                if (Directory.Exists(directory))
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "清理临时目录失败 => {Directory}", directory);
+            }
+        }
+    }
+
+    private sealed class AugmentationResult
+    {
+        public List<TrainingImageData> Samples { get; set; } = new();
+        public Dictionary<string, int> OperationUsage { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public string? WorkspaceDirectory { get; set; }
     }
 }
