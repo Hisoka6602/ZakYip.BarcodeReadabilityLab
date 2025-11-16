@@ -54,7 +54,8 @@ public static class ModelEndpoints
             .Accepts<ModelImportRequest>("multipart/form-data")
             .Produces<ModelImportResponse>(StatusCodes.Status201Created)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .ProducesProblem(StatusCodes.Status500InternalServerError)
+            .DisableAntiforgery();
     }
 
     private static IResult DownloadFile(string modelPath, ILogger logger)
