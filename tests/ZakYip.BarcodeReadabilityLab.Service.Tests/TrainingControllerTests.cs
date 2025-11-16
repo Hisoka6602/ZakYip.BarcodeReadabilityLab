@@ -27,7 +27,7 @@ public sealed class TrainingControllerTests
             Epochs = 30,
             BatchSize = 12,
             DataAugmentation = new DataAugmentationOptions { Enable = true, AugmentedImagesPerSample = 2 },
-            DataBalancing = new DataBalancingOptions { Strategy = DataBalancingStrategy.RandomOversampling }
+            DataBalancing = new DataBalancingOptions { Strategy = DataBalancingStrategy.OverSample }
         };
 
         _trainingOptions.Setup(options => options.Value).Returns(_defaults);

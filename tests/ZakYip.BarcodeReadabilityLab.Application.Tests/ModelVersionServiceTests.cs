@@ -24,7 +24,10 @@ public sealed class ModelVersionServiceTests
 
         _optionsMonitor.Setup(monitor => monitor.CurrentValue).Returns(options);
         _optionsCache
-            .Setup(cache => cache.TryUpdate(It.IsAny<string>(), It.IsAny<BarcodeMlModelOptions>(), It.IsAny<BarcodeMlModelOptions>()))
+            .Setup(cache => cache.TryRemove(It.IsAny<string>()))
+            .Returns(true);
+        _optionsCache
+            .Setup(cache => cache.TryAdd(It.IsAny<string>(), It.IsAny<BarcodeMlModelOptions>()))
             .Returns(true);
     }
 

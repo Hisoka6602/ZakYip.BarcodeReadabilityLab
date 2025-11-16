@@ -134,7 +134,8 @@ public sealed class MlNetModelVariantAnalyzer : IModelVariantAnalyzer, IDisposab
         if (_isDisposed)
             return;
 
-        _mlContext?.Dispose();
+        // MLContext does not implement IDisposable in ML.NET 5.0
+        // No cleanup needed
         _isDisposed = true;
         GC.SuppressFinalize(this);
     }

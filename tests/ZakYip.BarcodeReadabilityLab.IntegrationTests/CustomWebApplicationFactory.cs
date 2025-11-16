@@ -7,7 +7,7 @@ using ZakYip.BarcodeReadabilityLab.Service.Workers;
 
 namespace ZakYip.BarcodeReadabilityLab.IntegrationTests;
 
-internal sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
+public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -31,7 +31,9 @@ internal sealed class CustomWebApplicationFactory : WebApplicationFactory<Progra
                 ["BarcodeReadabilityService:UnableToAnalyzePath"] = unresolvedPath,
                 ["BarcodeReadabilityService:TrainingDataPath"] = trainingDataPath,
                 ["BarcodeReadabilityService:ModelPath"] = modelPath,
-                ["ApiSettings:Urls"] = "http://127.0.0.1:0"
+                ["ApiSettings:Urls"] = "http://127.0.0.1:0",
+                ["TrainingOptions:EnableResourceMonitoring"] = "false",
+                ["TrainingOptions:MaxConcurrentTrainingJobs"] = "1"
             });
         });
 
@@ -59,12 +61,6 @@ internal sealed class CustomWebApplicationFactory : WebApplicationFactory<Progra
 
             services.RemoveAll<IImageClassificationTrainer>();
             services.AddSingleton<IImageClassificationTrainer, FakeImageClassificationTrainer>();
-
-            services.PostConfigure<TrainingOptions>(options =>
-            {
-                options.EnableResourceMonitoring = false;
-                options.MaxConcurrentTrainingJobs = 1;
-            });
 
             using var serviceProvider = services.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();

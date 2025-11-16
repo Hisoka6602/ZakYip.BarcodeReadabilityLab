@@ -199,7 +199,8 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
         if (string.IsNullOrWhiteSpace(label))
             return (null, false);
 
-        => MlNetPredictionMapper.MapLabelToNoreadReason(label);
+        return MlNetPredictionMapper.MapLabelToNoreadReason(label);
+    }
 
     /// <summary>
     /// 配置变更处理
