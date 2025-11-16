@@ -42,6 +42,9 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    private Guid _currentJobId;
+    private TrainingProgressTracker? _progressTracker;
+
     public MlNetImageClassificationTrainer(ILogger<MlNetImageClassificationTrainer> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -61,6 +64,10 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         ITrainingProgressCallback? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
+        // 初始化进度跟踪器
+        _currentJobId = Guid.NewGuid();
+        _progressTracker = new TrainingProgressTracker();
+        
         ValidateParameters(trainingRootDirectory, outputModelDirectory, learningRate, epochs, batchSize);
 
         var augmentationOptions = dataAugmentationOptions ?? new DataAugmentationOptions();
@@ -82,7 +89,8 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            progressCallback?.ReportProgress(0.05m, "开始扫描训练数据");
+            ReportDetailedProgress(progressCallback, 0.02m, TrainingStage.Initializing, "初始化训练环境");
+            ReportDetailedProgress(progressCallback, 0.05m, TrainingStage.ScanningData, "开始扫描训练数据");
 
             var trainingData = ScanTrainingData(trainingRootDirectory);
             _logger.LogInformation("扫描到训练样本 => 总数: {Count}", trainingData.Count);
@@ -97,7 +105,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            progressCallback?.ReportProgress(0.12m, "应用数据平衡策略");
+            ReportDetailedProgress(progressCallback, 0.12m, TrainingStage.BalancingData, "应用数据平衡策略");
             var balancedTrainingData = ApplyDataBalancing(trainingData, balancingOptions, out var balancedDistribution);
             _logger.LogInformation(
                 "数据平衡完成 => 策略: {Strategy}, 样本数: {Count}",
@@ -107,6 +115,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            ReportDetailedProgress(progressCallback, 0.14m, TrainingStage.AugmentingData, "开始数据增强");
             var augmentationWorkspace = Path.Combine(outputModelDirectory, "ml-workspace", $"augment-train-{Guid.NewGuid():N}");
             var augmentationResult = ApplyDataAugmentation(balancedTrainingData, augmentationOptions, augmentationWorkspace, cancellationToken);
 
@@ -151,7 +160,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            progressCallback?.ReportProgress(0.18m, $"准备训练数据，共 {finalTrainingData.Count} 条样本");
+            ReportDetailedProgress(progressCallback, 0.18m, TrainingStage.PreparingData, $"准备训练数据，共 {finalTrainingData.Count} 条样本");
 
             var dataView = _mlContext.Data.LoadFromEnumerable(finalTrainingData);
 
@@ -162,7 +171,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            progressCallback?.ReportProgress(0.25m, "构建训练管道");
+            ReportDetailedProgress(progressCallback, 0.25m, TrainingStage.BuildingPipeline, "构建训练管道");
 
             var trainerOptions = BuildTrainerOptions(learningRate, epochs, batchSize, outputModelDirectory, progressCallback);
             var pipeline = BuildTrainingPipeline(trainerOptions);
@@ -175,13 +184,13 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
             _logger.LogInformation("开始训练模型...");
 
-            progressCallback?.ReportProgress(0.30m, "开始训练模型");
+            ReportDetailedProgress(progressCallback, 0.30m, TrainingStage.Training, "开始训练模型");
 
             var trainedModel = await Task.Run(() => pipeline.Fit(trainTestSplit.TrainSet), cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            progressCallback?.ReportProgress(0.80m, "评估模型性能");
+            ReportDetailedProgress(progressCallback, 0.80m, TrainingStage.Evaluating, "评估模型性能");
 
             var evaluationMetrics = EvaluateModel(trainedModel, trainTestSplit.TestSet, uniqueLabels);
 
@@ -208,11 +217,11 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
                 _logger.LogInformation("数据增强影响评估 => {Report}", impactJson);
             }
 
-            progressCallback?.ReportProgress(0.90m, "训练完成，保存模型");
+            ReportDetailedProgress(progressCallback, 0.90m, TrainingStage.SavingModel, "训练完成，保存模型");
 
             var modelFilePath = SaveModel(trainedModel, trainTestSplit.TrainSet.Schema, outputModelDirectory);
 
-            progressCallback?.ReportProgress(1.0m, "训练任务完成");
+            ReportDetailedProgress(progressCallback, 1.0m, TrainingStage.Completed, "训练任务完成");
 
             _logger.LogInformation(
                 "模型训练完成 => 模型路径: {ModelFilePath}, 最终样本数: {SampleCount}, 准确率: {Accuracy:P2}",
@@ -340,13 +349,36 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
                 return;
 
             var accuracy = Math.Clamp(metrics.Train.Accuracy, 0f, 1f);
-            var progress = 0.30m + (decimal)accuracy * 0.5m;
-            progressCallback?.ReportProgress(progress, $"Epoch {metrics.Train.Epoch} 准确率 {accuracy:P2}, 损失 {metrics.Train.CrossEntropy:F4}");
+            var currentEpoch = metrics.Train.Epoch;
+            var totalEpochs = epochs;
+            
+            // 更精确的进度计算：基于 epoch 进度
+            var epochProgress = (decimal)currentEpoch / (decimal)totalEpochs;
+            var trainingPhaseProgress = 0.30m + epochProgress * 0.50m; // 训练阶段占 30% 到 80%
+            
+            var metricsSnapshot = new TrainingMetricsSnapshot
+            {
+                CurrentEpoch = currentEpoch,
+                TotalEpochs = totalEpochs,
+                Accuracy = (decimal)accuracy,
+                Loss = (decimal)metrics.Train.CrossEntropy,
+                LearningRate = learningRate
+            };
+
+            ReportDetailedProgress(
+                progressCallback,
+                trainingPhaseProgress,
+                TrainingStage.Training,
+                $"Epoch {currentEpoch}/{totalEpochs} - 准确率: {accuracy:P2}, 损失: {metrics.Train.CrossEntropy:F4}",
+                metricsSnapshot);
+            
             _logger.LogInformation(
-                "训练中 => Epoch: {Epoch}, 准确率: {Accuracy:P2}, 损失: {CrossEntropy:F4}",
-                metrics.Train.Epoch,
+                "训练中 => Epoch: {Epoch}/{TotalEpochs}, 准确率: {Accuracy:P2}, 损失: {CrossEntropy:F4}, 进度: {Progress:P1}",
+                currentEpoch,
+                totalEpochs,
                 accuracy,
-                metrics.Train.CrossEntropy);
+                metrics.Train.CrossEntropy,
+                trainingPhaseProgress);
         };
 
         Directory.CreateDirectory(options.WorkspacePath!);
@@ -983,6 +1015,126 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
             {
                 _logger.LogDebug(ex, "清理临时目录失败 => {Directory}", directory);
             }
+        }
+    }
+
+    /// <summary>
+    /// 报告详细训练进度
+    /// </summary>
+    private void ReportDetailedProgress(
+        ITrainingProgressCallback? callback,
+        decimal progress,
+        TrainingStage stage,
+        string? message = null,
+        TrainingMetricsSnapshot? metrics = null)
+    {
+        if (callback is null || _progressTracker is null)
+        {
+            return;
+        }
+
+        var progressInfo = new TrainingProgressInfo
+        {
+            JobId = _currentJobId,
+            Progress = progress,
+            Stage = stage,
+            Message = message,
+            StartTime = _progressTracker.StartTime,
+            EstimatedRemainingSeconds = _progressTracker.CalculateEstimatedRemainingSeconds(progress),
+            EstimatedCompletionTime = _progressTracker.CalculateEstimatedCompletionTime(progress),
+            Metrics = metrics,
+            Timestamp = DateTime.UtcNow
+        };
+
+        callback.ReportDetailedProgress(progressInfo);
+    }
+
+    /// <summary>
+    /// 训练进度跟踪器（用于计算 ETA）
+    /// </summary>
+    private sealed class TrainingProgressTracker
+    {
+        private readonly DateTime _startTime;
+        private readonly object _lock = new();
+        private decimal _lastProgress;
+        private DateTime _lastUpdateTime;
+
+        public TrainingProgressTracker()
+        {
+            _startTime = DateTime.UtcNow;
+            _lastProgress = 0.0m;
+            _lastUpdateTime = _startTime;
+        }
+
+        /// <summary>
+        /// 获取训练开始时间
+        /// </summary>
+        public DateTime StartTime => _startTime;
+
+        /// <summary>
+        /// 计算预估剩余时间（秒）
+        /// </summary>
+        /// <param name="currentProgress">当前进度（0.0 到 1.0）</param>
+        /// <returns>预估剩余秒数，如果无法计算则返回 null</returns>
+        public decimal? CalculateEstimatedRemainingSeconds(decimal currentProgress)
+        {
+            lock (_lock)
+            {
+                if (currentProgress <= 0.0m || currentProgress >= 1.0m)
+                {
+                    return null;
+                }
+
+                var now = DateTime.UtcNow;
+                var elapsed = (now - _startTime).TotalSeconds;
+
+                if (elapsed < 1.0) // 避免在开始时计算不准确
+                {
+                    return null;
+                }
+
+                // 基于总体进度计算
+                var averageSpeed = currentProgress / (decimal)elapsed;
+                
+                if (averageSpeed <= 0.0m)
+                {
+                    return null;
+                }
+
+                var remainingProgress = 1.0m - currentProgress;
+                var estimatedRemaining = remainingProgress / averageSpeed;
+
+                _lastProgress = currentProgress;
+                _lastUpdateTime = now;
+
+                return estimatedRemaining;
+            }
+        }
+
+        /// <summary>
+        /// 计算预估完成时间
+        /// </summary>
+        /// <param name="currentProgress">当前进度（0.0 到 1.0）</param>
+        /// <returns>预估完成时间（UTC），如果无法计算则返回 null</returns>
+        public DateTime? CalculateEstimatedCompletionTime(decimal currentProgress)
+        {
+            var remainingSeconds = CalculateEstimatedRemainingSeconds(currentProgress);
+            
+            if (remainingSeconds is null)
+            {
+                return null;
+            }
+
+            return DateTime.UtcNow.AddSeconds((double)remainingSeconds.Value);
+        }
+
+        /// <summary>
+        /// 获取已经过时间（秒）
+        /// </summary>
+        public decimal GetElapsedSeconds()
+        {
+            var elapsed = DateTime.UtcNow - _startTime;
+            return (decimal)elapsed.TotalSeconds;
         }
     }
 

@@ -307,5 +307,37 @@ public sealed class TrainingWorker : BackgroundService
                 }
             });
         }
+
+        public void ReportDetailedProgress(TrainingProgressInfo progressInfo)
+        {
+            // 异步更新进度，不阻塞训练过程
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // 更新数据库中的进度
+                    await _trainingJobService.UpdateJobProgress(_jobId, progressInfo.Progress);
+                    
+                    // 通过 SignalR 推送详细进度更新
+                    if (_progressNotifier is not null)
+                    {
+                        await _progressNotifier.NotifyDetailedProgressAsync(progressInfo);
+                    }
+                    
+                    var logMessage = progressInfo.Message ?? progressInfo.Stage.ToString();
+                    _logger.LogInformation(
+                        "详细进度更新 => JobId: {JobId}, 阶段: {Stage}, 进度: {Progress:P0}, ETA: {ETA}秒, 消息: {Message}",
+                        _jobId, 
+                        progressInfo.Stage,
+                        progressInfo.Progress,
+                        progressInfo.EstimatedRemainingSeconds,
+                        logMessage);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "更新详细训练进度失败，JobId: {JobId}", _jobId);
+                }
+            });
+        }
     }
 }
