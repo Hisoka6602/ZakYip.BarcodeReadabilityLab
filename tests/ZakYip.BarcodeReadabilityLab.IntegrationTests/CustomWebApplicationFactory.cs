@@ -57,6 +57,10 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.AddDbContext<TrainingJobDbContext>(options =>
             {
                 options.UseInMemoryDatabase("IntegrationTests");
+                options.ConfigureWarnings(warnings =>
+                {
+                    warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning);
+                });
             });
 
             services.RemoveAll<IImageClassificationTrainer>();
