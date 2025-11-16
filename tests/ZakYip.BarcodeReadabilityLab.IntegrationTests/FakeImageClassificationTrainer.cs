@@ -49,4 +49,31 @@ internal sealed class FakeImageClassificationTrainer : IImageClassificationTrain
             EvaluationMetrics = metrics
         };
     }
+
+    public async Task<TrainingResult> TrainWithTransferLearningAsync(
+        string trainingRootDirectory,
+        string outputModelDirectory,
+        decimal learningRate,
+        int epochs,
+        int batchSize,
+        decimal? validationSplitRatio = null,
+        TransferLearningOptions? transferLearningOptions = null,
+        DataAugmentationOptions? dataAugmentationOptions = null,
+        DataBalancingOptions? dataBalancingOptions = null,
+        ITrainingProgressCallback? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
+        // 对于测试目的，简单地委托给常规训练方法
+        return await TrainAsync(
+            trainingRootDirectory,
+            outputModelDirectory,
+            learningRate,
+            epochs,
+            batchSize,
+            validationSplitRatio,
+            dataAugmentationOptions,
+            dataBalancingOptions,
+            progressCallback,
+            cancellationToken);
+    }
 }

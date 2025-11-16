@@ -460,6 +460,87 @@ POST /api/training/cancel/{jobId}
 }
 ```
 
+### 迁移学习 API
+
+#### 1. 获取预训练模型列表
+
+```http
+GET /api/pretrained-models/list
+```
+
+**响应 200 OK:**
+```json
+[
+  {
+    "modelType": "ResNet50",
+    "modelName": "ResNet50",
+    "description": "50层深度残差网络，平衡性能和精度的经典选择",
+    "modelSizeMB": 97.7,
+    "isDownloaded": false,
+    "recommendedUseCase": "通用图像分类，适合大多数场景",
+    "parameterCountMillions": 25.6,
+    "trainedOn": "ImageNet (1000 classes)"
+  }
+]
+```
+
+#### 2. 启动迁移学习训练
+
+**基础示例 - 使用 ResNet50**
+
+```http
+POST /api/training/transfer-learning/start
+Content-Type: application/json
+
+{
+  "pretrainedModelType": "ResNet50",
+  "layerFreezeStrategy": "FreezeAll",
+  "learningRate": 0.001,
+  "epochs": 20,
+  "batchSize": 10,
+  "remarks": "使用 ResNet50 进行迁移学习"
+}
+```
+
+**高级示例 - 多阶段训练**
+
+```http
+POST /api/training/transfer-learning/start
+Content-Type: application/json
+
+{
+  "pretrainedModelType": "ResNet50",
+  "enableMultiStageTraining": true,
+  "trainingPhases": [
+    {
+      "phaseName": "阶段1: 冻结训练",
+      "phaseNumber": 1,
+      "epochs": 10,
+      "learningRate": 0.001,
+      "layerFreezeStrategy": "FreezeAll"
+    },
+    {
+      "phaseName": "阶段2: 微调",
+      "phaseNumber": 2,
+      "epochs": 15,
+      "learningRate": 0.0001,
+      "layerFreezeStrategy": "FreezePartial",
+      "unfreezeLayersPercentage": 0.3
+    }
+  ],
+  "batchSize": 10,
+  "remarks": "多阶段迁移学习"
+}
+```
+
+**响应 200 OK:**
+```json
+{
+  "jobId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "message": "迁移学习训练任务已创建并加入队列"
+}
+```
+
 ### 模型管理 API
 
 #### 1. 下载当前激活模型
@@ -858,17 +939,16 @@ curl -X POST http://localhost:5000/api/training/start \
 **预估工作量**: 6-8 天
 **优先级**: 🟡 中
 
-#### PR #11: 实现迁移学习支持
+#### ✅ PR #11: 实现迁移学习支持（已完成）
 **目标**: 提升模型训练效率和效果
-- 支持加载预训练模型进行微调
-- 提供常用预训练模型下载（ResNet、InceptionV3、EfficientNet）
-- 实现模型迁移 API 端点
-- 添加冻结层和解冻层功能
-- 支持多阶段训练策略
-- 添加迁移学习文档和最佳实践
+- ✅ 支持加载预训练模型进行微调
+- ✅ 提供常用预训练模型下载（ResNet、InceptionV3、EfficientNet）
+- ✅ 实现模型迁移 API 端点
+- ✅ 添加冻结层和解冻层功能
+- ✅ 支持多阶段训练策略
+- ✅ 添加迁移学习文档和最佳实践
 
-**预估工作量**: 8-10 天
-**优先级**: 🟢 低（高级功能）
+**状态**: 已完成
 
 ### 第四阶段：部署与运维 (2-3 周)
 
@@ -990,6 +1070,7 @@ curl -X POST http://localhost:5000/api/training/start \
 - ✅ **PR #4**: 完善日志系统（动态日志级别、审计日志、性能监控）
 - ✅ **PR #5**: 模型评估指标（混淆矩阵、F1分数、精确率、召回率）
 - ✅ **PR #8**: 自动超参数调优（网格搜索、随机搜索、并行搜索）
+- ✅ **PR #11**: 迁移学习支持（预训练模型、层冻结、多阶段训练）
 - ✅ 训练任务持久化（SQLite）
 - ✅ 模型版本管理
 - ✅ SignalR 实时通信
@@ -1089,8 +1170,9 @@ dotnet ef database update PreviousMigrationName --project src/ZakYip.BarcodeRead
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Windows 服务部署指南
 - **[WINDOWS_SERVICE_SETUP.md](WINDOWS_SERVICE_SETUP.md)** - Windows 服务设置指南
 - **[LOGGING_AND_EXCEPTIONS.md](LOGGING_AND_EXCEPTIONS.md)** - 日志和异常处理机制
-- **[LOGGING_ENHANCEMENTS.md](LOGGING_ENHANCEMENTS.md)** - 日志配置增强功能（新增）
+- **[LOGGING_ENHANCEMENTS.md](LOGGING_ENHANCEMENTS.md)** - 日志配置增强功能
 - **[docs/TRAINING_HYPERPARAMETER_GUIDE.md](docs/TRAINING_HYPERPARAMETER_GUIDE.md)** - 训练超参数推荐配置
+- **[docs/TRANSFER_LEARNING_GUIDE.md](docs/TRANSFER_LEARNING_GUIDE.md)** - 迁移学习使用指南（新增）
 
 ---
 

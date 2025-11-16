@@ -206,6 +206,7 @@ try
     app.MapTrainingEndpoints();
     app.MapModelEndpoints();
     app.MapLoggingEndpoints();
+    app.MapPretrainedModelsEndpoints();
 
     // 注册传统 MVC 控制器（向后兼容）
     app.MapControllers();
