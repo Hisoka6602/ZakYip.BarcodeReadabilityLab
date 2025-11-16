@@ -39,6 +39,9 @@ public static class ServiceCollectionExtensions
         // 注册 IImageClassificationTrainer 实现
         services.AddSingleton<IImageClassificationTrainer, MlNetImageClassificationTrainer>();
 
+        // 注册 IHyperparameterTuner 实现
+        services.AddSingleton<IHyperparameterTuner, MlNetHyperparameterTuner>();
+
         return services;
     }
 
@@ -67,6 +70,9 @@ public static class ServiceCollectionExtensions
 
         // 注册 IImageClassificationTrainer 实现
         services.AddSingleton<IImageClassificationTrainer, MlNetImageClassificationTrainer>();
+
+        // 注册 IHyperparameterTuner 实现
+        services.AddSingleton<IHyperparameterTuner, MlNetHyperparameterTuner>();
 
         return services;
     }

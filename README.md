@@ -233,6 +233,12 @@ ZakYip.BarcodeReadabilityLab/
 - ✅ 并发控制（可配置并发数）
 - ✅ 训练进度报告
 - ✅ 任务持久化（SQLite）
+- ✅ 自动超参数调优
+  - ✅ 网格搜索（Grid Search）
+  - ✅ 随机搜索（Random Search）
+  - ✅ 并行超参数搜索
+  - ✅ 超参数验证和推荐
+  - ✅ 不同超参数组合性能对比
 
 #### 5. 模型版本管理
 - ✅ 模型版本注册
@@ -313,7 +319,7 @@ ZakYip.BarcodeReadabilityLab/
 - ❌ 迁移学习（基于预训练模型）
 - ❌ 分布式训练
 - ❌ 增量训练
-- ❌ 自动超参数调优
+- ✅ 自动超参数调优（网格搜索、随机搜索）
 
 #### 5. 容器化部署
 - ❌ Docker 镜像
@@ -795,18 +801,36 @@ curl -X POST http://localhost:5000/api/training/start \
 
 ### 第三阶段：高级特性 (3-5 周)
 
-#### PR #8: 实现自动超参数调优
+#### ✅ PR #8: 实现自动超参数调优（已完成）
 **目标**: 提升模型训练灵活性和质量
-- 实现网格搜索（Grid Search）
-- 实现随机搜索（Random Search）
-- 实现贝叶斯优化（可选）
-- 添加超参数验证逻辑
-- 提供超参数推荐配置
-- 支持并行超参数搜索
-- 记录和比较不同超参数组合的性能
+- ✅ 实现网格搜索（Grid Search）
+- ✅ 实现随机搜索（Random Search）
+- ✅ 贝叶斯优化（标记为未来扩展，当前未实现）
+- ✅ 添加超参数验证逻辑
+- ✅ 提供超参数推荐配置（快速调试、标准、精细、基于数据集大小）
+- ✅ 支持并行超参数搜索（可配置最大并行任务数）
+- ✅ 记录和比较不同超参数组合的性能
+- ✅ 支持提前停止（Early Stopping）
+- ✅ 支持多种评估指标（准确率、宏/微平均 F1、对数损失）
+- ✅ 完整的进度回调接口
 
-**预估工作量**: 6-8 天
-**优先级**: 🟢 低（增强功能）
+**状态**: 已完成
+
+**新增核心模型**:
+- `HyperparameterTuningStrategy`: 调优策略枚举（网格搜索、随机搜索、贝叶斯优化）
+- `HyperparameterSpace`: 超参数搜索空间定义
+- `HyperparameterConfiguration`: 单次试验的超参数配置
+- `HyperparameterTrialResult`: 单次试验结果
+- `HyperparameterTuningResult`: 完整调优结果
+- `GridSearchOptions`: 网格搜索配置选项
+- `RandomSearchOptions`: 随机搜索配置选项
+- `EvaluationMetricType`: 评估指标类型枚举
+
+**新增服务**:
+- `MlNetHyperparameterTuner`: 超参数调优器主实现
+- `HyperparameterRecommendations`: 超参数推荐配置提供者
+- `IHyperparameterTuner`: 超参数调优器接口
+- `IHyperparameterTuningProgressCallback`: 调优进度回调接口
 
 #### PR #9: 完善异常处理体系
 **目标**: 改善调试和运维体验
@@ -965,6 +989,7 @@ curl -X POST http://localhost:5000/api/training/start \
 - ✅ **PR #3**: Swagger/OpenAPI 文档集成
 - ✅ **PR #4**: 完善日志系统（动态日志级别、审计日志、性能监控）
 - ✅ **PR #5**: 模型评估指标（混淆矩阵、F1分数、精确率、召回率）
+- ✅ **PR #8**: 自动超参数调优（网格搜索、随机搜索、并行搜索）
 - ✅ 训练任务持久化（SQLite）
 - ✅ 模型版本管理
 - ✅ SignalR 实时通信
