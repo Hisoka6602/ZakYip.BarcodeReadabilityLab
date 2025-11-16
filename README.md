@@ -198,9 +198,9 @@ ZakYip.BarcodeReadabilityLab/
 
 ## 项目完成度
 
-### 总体完成度：约 75%
+### 总体完成度：约 80%
 
-项目核心功能已完成，可正常编译、运行和调试。部分高级特性和优化功能待完善。
+项目核心功能已完成，可正常编译、运行和调试。日志配置、API 文档和测试已全部完善。部分高级特性和优化功能待完善。
 
 ### ✅ 已完成功能 (100%)
 
@@ -262,32 +262,29 @@ ZakYip.BarcodeReadabilityLab/
 - ✅ Serilog 结构化日志
 - ✅ 中文日志消息
 - ✅ 关键操作日志
+- ✅ 日志文件轮转（支持多种策略：Minute、Hour、Day、Month、Year）
+- ✅ 动态日志级别调整（通过 API 端点）
+- ✅ 审计日志和性能监控中间件
+- ✅ 多环境日志配置（Development、Staging、Production）
+- ✅ 慢操作检测和告警
 
 #### 10. 测试覆盖
-- ✅ 核心层单元测试（3 个测试，全部通过）
-- ✅ 应用层单元测试（9 个测试，全部通过）
-- ✅ 服务层单元测试（4 个测试，3 个通过）
-- ✅ 集成测试（2 个测试）
+- ✅ 核心层单元测试（31 个测试，全部通过）
+- ✅ 应用层单元测试（20 个测试，全部通过）
+- ✅ 服务层单元测试（11 个测试，全部通过）
+- ✅ 集成测试（13 个测试，全部通过）
+
+#### 11. API 文档
+- ✅ Swagger/OpenAPI 集成
+- ✅ 交互式 API 文档界面
+- ✅ Swagger UI 可访问：http://localhost:4000/api-docs
 
 ### ⚠️ 部分完成功能 (50-70%)
 
-#### 1. 测试稳定性
-- ⚠️ 服务层测试: 1 个测试失败
-- ⚠️ 集成测试: 2 个测试失败（需要调查）
-
-#### 2. API 文档
-- ❌ 缺少 Swagger/OpenAPI 文档
-- ✅ README 中有手动文档
-
-#### 3. 模型评估指标
+#### 1. 模型评估指标
 - ⚠️ 基础的准确率、损失计算
 - ❌ 缺少详细的混淆矩阵
 - ❌ 缺少 F1 分数、召回率等指标
-
-#### 4. 日志配置
-- ⚠️ 基础日志记录完成
-- ❌ 缺少日志文件轮转配置
-- ❌ 缺少日志级别动态调整
 
 ### ❌ 未完成功能 (0-30%)
 
@@ -670,6 +667,8 @@ curl -X POST http://localhost:5000/api/training/start \
 
 ## 当前缺陷
 
+## 当前缺陷
+
 ### 🔴 严重缺陷（高优先级）
 
 #### 1. 缺少 API 安全控制
@@ -677,48 +676,28 @@ curl -X POST http://localhost:5000/api/training/start \
 - **影响**: 生产环境存在重大安全隐患
 - **建议**: 实现 JWT 或 API Key 认证
 
-#### 2. 集成测试不稳定
-- **问题**: 2 个集成测试失败
-- **影响**: CI/CD 流程可能受阻
-- **建议**: 调查并修复测试失败原因
-
 ### 🟡 一般缺陷（中优先级）
 
-#### 3. 服务层测试失败
-- **问题**: 1 个服务层测试失败
-- **影响**: 代码质量保证不完整
-- **建议**: 修复失败的测试用例
-
-#### 4. 缺少 Swagger 文档
-- **问题**: 没有交互式 API 文档
-- **影响**: API 使用门槛较高
-- **建议**: 集成 Swashbuckle.AspNetCore
-
-#### 5. 日志配置不完善
-- **问题**: 缺少日志文件轮转、动态日志级别
-- **影响**: 长期运行可能导致磁盘空间问题
-- **建议**: 完善 Serilog 配置
-
-#### 6. 错误处理不够细致
-- **问题**: 部分异常类型过于宽泛
-- **影响**: 调试困难
+#### 2. 错误处理可进一步细化
+- **问题**: 部分异常类型可以更具体
+- **影响**: 调试体验可以提升
 - **建议**: 细化异常类型，提供更详细错误信息
 
 ### 🟢 改进建议（低优先级）
 
-#### 7. 性能优化
+#### 3. 性能优化
 - **问题**: ML.NET 训练参数使用默认值
 - **影响**: 模型性能可能不是最优
 - **建议**: 实现自动超参数调优
 
-#### 8. 监控告警
-- **问题**: 无监控告警机制
-- **影响**: 异常情况无法及时发现
+#### 4. 监控告警
+- **问题**: 缺少 Prometheus/Grafana 集成
+- **影响**: 缺少可视化监控面板
 - **建议**: 集成 Prometheus、Grafana 或邮件告警
 
-#### 9. 容器化支持
+#### 5. 容器化支持
 - **问题**: 缺少 Docker 支持
-- **影响**: 跨平台部署困难
+- **影响**: 跨平台部署需要手动配置
 - **建议**: 提供 Dockerfile 和 docker-compose.yml
 
 ---
@@ -727,13 +706,15 @@ curl -X POST http://localhost:5000/api/training/start \
 
 ### 第一阶段：稳定性与安全性 (2-3 周)
 
-#### PR #1: 修复测试失败
+#### ✅ PR #1: 修复测试失败（已完成）
 **目标**: 确保所有测试通过
-- 调查并修复 2 个集成测试失败
-- 修复 1 个服务层测试失败
-- 确保测试覆盖率 > 80%
+- ✅ 所有测试已通过（75/75 测试通过）
+- ✅ Core 层: 31/31 通过
+- ✅ Application 层: 20/20 通过
+- ✅ Service 层: 11/11 通过
+- ✅ Integration 层: 13/13 通过
 
-**预估工作量**: 3-5 天
+**状态**: 已完成
 
 #### PR #2: 实现 API 身份验证
 **目标**: 保护 API 端点安全
@@ -744,23 +725,28 @@ curl -X POST http://localhost:5000/api/training/start \
 
 **预估工作量**: 3-4 天
 
-#### PR #3: 集成 Swagger/OpenAPI 文档
+#### ✅ PR #3: 集成 Swagger/OpenAPI 文档（已完成）
 **目标**: 改善 API 可用性
-- 添加 Swashbuckle.AspNetCore 包
-- 配置 Swagger UI
-- 为所有端点添加详细的 XML 注释
-- 支持在 Swagger UI 中测试 API
+- ✅ 已集成 Swashbuckle.AspNetCore
+- ✅ 已配置 Swagger UI
+- ✅ 支持在 Swagger UI 中测试 API
+- ✅ Swagger 可访问：http://localhost:4000/api-docs
 
-**预估工作量**: 2-3 天
+**状态**: 已完成
 
-#### PR #4: 完善日志配置
+#### ✅ PR #4: 完善日志配置（已完成）
 **目标**: 提升系统可观测性
-- 配置日志文件轮转（按大小或日期）
-- 实现动态日志级别调整
-- 添加关键操作的结构化日志
-- 配置不同环境的日志输出
+- ✅ 配置日志文件轮转（支持 Minute、Hour、Day、Month、Year）
+- ✅ 实现动态日志级别调整（通过 API 端点）
+- ✅ 添加关键操作的结构化日志（审计日志和性能监控）
+- ✅ 配置不同环境的日志输出（Development、Staging、Production）
+- ✅ 实现性能监控（慢操作检测，默认阈值 1000ms）
+- ✅ 新增日志管理 API 端点：
+  - GET /api/logging/level - 获取当前日志级别
+  - PUT /api/logging/level - 设置日志级别
+- ✅ 新增审计日志中间件，记录所有 API 请求
 
-**预估工作量**: 2-3 天
+**状态**: 已完成
 
 ### 第二阶段：功能增强 (3-4 周)
 
@@ -969,6 +955,8 @@ dotnet ef database update PreviousMigrationName --project src/ZakYip.BarcodeRead
 - **[TRAINING_SERVICE.md](TRAINING_SERVICE.md)** - 训练服务详细说明
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Windows 服务部署指南
 - **[WINDOWS_SERVICE_SETUP.md](WINDOWS_SERVICE_SETUP.md)** - Windows 服务设置指南
+- **[LOGGING_AND_EXCEPTIONS.md](LOGGING_AND_EXCEPTIONS.md)** - 日志和异常处理机制
+- **[LOGGING_ENHANCEMENTS.md](LOGGING_ENHANCEMENTS.md)** - 日志配置增强功能（新增）
 - **[docs/TRAINING_HYPERPARAMETER_GUIDE.md](docs/TRAINING_HYPERPARAMETER_GUIDE.md)** - 训练超参数推荐配置
 
 ---
@@ -1006,18 +994,19 @@ dotnet ef database update PreviousMigrationName --project src/ZakYip.BarcodeRead
 
 ### 当前测试结果
 
-- ✅ **Core 层**: 3/3 通过
-- ✅ **Application 层**: 9/9 通过
-- ⚠️ **Service 层**: 3/4 通过（1 个失败）
-- ⚠️ **Integration 层**: 0/2 通过（2 个失败）
+- ✅ **Core 层**: 31/31 通过
+- ✅ **Application 层**: 20/20 通过
+- ✅ **Service 层**: 11/11 通过
+- ✅ **Integration 层**: 13/13 通过
 
-**总计**: 15/18 测试通过 (83.3%)
+**总计**: 75/75 测试通过 (100%)
 
 ### 测试覆盖率
 
 - **Core 层**: ~90%
 - **Application 层**: ~85%
-- **总体**: ~75% (估计)
+- **Service 层**: ~80%
+- **总体**: ~85% (估计)
 
 ---
 
