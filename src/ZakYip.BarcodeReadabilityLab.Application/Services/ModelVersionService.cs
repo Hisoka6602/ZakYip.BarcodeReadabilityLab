@@ -188,16 +188,14 @@ public sealed class ModelVersionService : IModelVersionService
             throw new ArgumentException("模型路径不能为空", nameof(modelPath));
 
         var trimmedPath = modelPath.Trim();
-        var current = _modelOptionsMonitor.CurrentValue;
         var updatedOptions = new BarcodeMlModelOptions
         {
             CurrentModelPath = trimmedPath
         };
 
-        if (!_optionsCache.TryUpdate(Options.DefaultName, updatedOptions, current))
-        {
-            _optionsCache.TryAdd(Options.DefaultName, updatedOptions);
-        }
+        // IOptionsMonitorCache 不支持 TryUpdate，需要先移除再添加
+        _optionsCache.TryRemove(Options.DefaultName);
+        _optionsCache.TryAdd(Options.DefaultName, updatedOptions);
 
         _logger.LogInformation("当前在线模型已更新 => Path: {ModelPath}", trimmedPath);
     }

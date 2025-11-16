@@ -93,7 +93,7 @@ public class TrainingJobServiceTests
             DataBalancing = new DataBalancingOptions()
         };
 
-        await Assert.ThrowsAsync<TrainingException>(() => service.StartTrainingAsync(request));
+        await Assert.ThrowsAsync<TrainingException>(async () => await service.StartTrainingAsync(request));
 
         _repositoryMock.Verify(repository => repository.AddAsync(It.IsAny<TrainingJob>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -114,7 +114,7 @@ public class TrainingJobServiceTests
             Progress = 0.4m,
             StartTime = DateTimeOffset.UtcNow,
             DataAugmentation = new DataAugmentationOptions { Enable = true },
-            DataBalancing = new DataBalancingOptions { Strategy = DataBalancingStrategy.RandomOversampling }
+            DataBalancing = new DataBalancingOptions { Strategy = DataBalancingStrategy.OverSample }
         };
 
         _repositoryMock
@@ -170,16 +170,20 @@ public class TrainingJobServiceTests
             .ReturnsAsync(trainingJob);
 
         _repositoryMock
-            .Setup(repository => repository.UpdateAsync(trainingJob, It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.UpdateAsync(It.IsAny<TrainingJob>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask)
             .Verifiable();
 
         using var service = CreateService();
 
-        await service.UpdateJobStatus(jobId, job => job.Progress = 0.9m);
+        // 使用 UpdateJobProgress 方法而不是已废弃的 UpdateJobStatus
+        await service.UpdateJobProgress(jobId, 0.9m);
 
-        Assert.Equal(0.9m, trainingJob.Progress);
-        _repositoryMock.Verify();
+        _repositoryMock.Verify(
+            repository => repository.UpdateAsync(
+                It.Is<TrainingJob>(j => j.JobId == jobId && j.Progress == 0.9m),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -254,7 +258,7 @@ public class TrainingJobServiceTests
 
     private TrainingJobService CreateService(int maxConcurrentJobs = 2)
     {
-        var options = Options.Create(new TrainingOptions
+        var options = Microsoft.Extensions.Options.Options.Create(new TrainingOptions
         {
             TrainingRootDirectory = "ignored",
             OutputModelDirectory = "ignored",

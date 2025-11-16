@@ -194,22 +194,25 @@ try
     // 注册传统 MVC 控制器（向后兼容）
     app.MapControllers();
 
-public partial class Program
-{
-}
+    Log.Information("应用程序已启动，正在监听地址：{Urls}", apiSettings.Urls);
+    app.Run();
 
-Log.Information("应用程序已启动，正在监听地址：{Urls}", apiSettings.Urls);
-app.Run();
-
-return 0;
+    return 0;
 }
 catch (Exception ex)
 {
     Log.Fatal(ex, "应用程序启动失败");
-return 1;
+    return 1;
 }
 finally
 {
     Log.Information("应用程序正在关闭...");
     Log.CloseAndFlush();
+}
+
+/// <summary>
+/// Program 类部分定义，用于集成测试
+/// </summary>
+public partial class Program
+{
 }

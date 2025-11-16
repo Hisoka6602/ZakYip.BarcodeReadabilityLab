@@ -325,7 +325,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
         {
             FeatureColumnName = "Image",
             LabelColumnName = "Label",
-            Arch = ImageClassificationTrainer.Architecture.Resnet50,
+            Arch = ImageClassificationTrainer.Architecture.ResnetV250,
             Epoch = epochs,
             BatchSize = batchSize,
             LearningRate = (float)learningRate,
@@ -336,17 +336,17 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
 
         options.MetricsCallback = metrics =>
         {
-            if (metrics is null)
+            if (metrics?.Train is null)
                 return;
 
-            var accuracy = Math.Clamp(metrics.Accuracy, 0f, 1f);
+            var accuracy = Math.Clamp(metrics.Train.Accuracy, 0f, 1f);
             var progress = 0.30m + (decimal)accuracy * 0.5m;
-            progressCallback?.ReportProgress(progress, $"Epoch {metrics.Epoch} 准确率 {accuracy:P2}, 损失 {metrics.CrossEntropy:F4}");
+            progressCallback?.ReportProgress(progress, $"Epoch {metrics.Train.Epoch} 准确率 {accuracy:P2}, 损失 {metrics.Train.CrossEntropy:F4}");
             _logger.LogInformation(
                 "训练中 => Epoch: {Epoch}, 准确率: {Accuracy:P2}, 损失: {CrossEntropy:F4}",
-                metrics.Epoch,
+                metrics.Train.Epoch,
                 accuracy,
-                metrics.CrossEntropy);
+                metrics.Train.CrossEntropy);
         };
 
         Directory.CreateDirectory(options.WorkspacePath!);
@@ -825,7 +825,7 @@ public sealed class MlNetImageClassificationTrainer : IImageClassificationTraine
             var max = Math.Max(options.BrightnessLower, options.BrightnessUpper);
             var factor = min + (float)(random.NextDouble() * (max - min));
 
-            context.AdjustBrightness(factor);
+            context.Brightness(factor);
             IncrementOperationUsage(operationUsage, "brightness");
         }
     }
