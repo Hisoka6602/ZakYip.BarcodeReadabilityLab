@@ -14,9 +14,10 @@ namespace ZakYip.BarcodeReadabilityLab.Service.Controllers;
 /// <remarks>
 /// 提供条码可读性模型训练的传统 REST API 端点。
 /// 建议使用 /api/training 端点以获得更完整的功能。
+/// 注意：此控制器已废弃，请使用 /api/training 下的 MinimalAPI 端点。
 /// </remarks>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/training-legacy")]
 public class TrainingController : ControllerBase
 {
     private readonly ITrainingJobService _trainingJobService;
@@ -79,10 +80,10 @@ public class TrainingController : ControllerBase
 
             _logger.LogInformation("训练任务已创建，JobId: {JobId}", jobId);
 
-            return Ok(new
+            return Ok(new StartTrainingResponse
             {
-                jobId,
-                message = "训练任务已创建并加入队列"
+                JobId = jobId,
+                Message = "训练任务已创建并加入队列"
             });
         }
         catch (TrainingException ex)
