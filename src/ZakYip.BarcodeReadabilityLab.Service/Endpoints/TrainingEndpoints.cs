@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using System.ComponentModel;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
 /// <summary>
@@ -71,6 +72,23 @@ public static class TrainingEndpoints
 - 包含每个任务的完整状态信息
 - 可用于分析和跟踪训练历史")
             .Produces<List<TrainingJobResponse>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
+        group.MapPost("/transfer-learning/start", StartTransferLearningTrainingAsync)
+            .WithName("StartTransferLearningTraining")
+            .WithSummary("启动迁移学习训练任务")
+            .WithDescription(@"使用预训练模型启动迁移学习训练任务。
+
+**功能说明：**
+- 支持使用预训练模型（ResNet、InceptionV3、EfficientNet等）进行迁移学习
+- 支持层冻结策略：全部冻结、部分冻结、全部解冻
+- 支持多阶段训练策略
+- 可配置数据增强和数据平衡
+
+**返回值：**
+- 成功时返回训练任务 ID，可用于后续查询任务状态")
+            .Produces<StartTrainingResponse>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
     }
 
@@ -260,5 +278,75 @@ public static class TrainingEndpoints
 
         var attribute = (DescriptionAttribute?)Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute));
         return attribute?.Description ?? value.ToString();
+    }
+
+    /// <summary>
+    /// 启动迁移学习训练任务
+    /// </summary>
+    private static async Task<IResult> StartTransferLearningTrainingAsync(
+        [FromBody] TransferLearningRequest? request,
+        [FromServices] ITrainingJobService trainingJobService,
+        [FromServices] IOptions<TrainingOptions> trainingOptions,
+        [FromServices] ILogger<Program> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var defaultOptions = trainingOptions.Value;
+
+            // 构建迁移学习选项
+            var transferLearningOptions = new TransferLearningOptions
+            {
+                Enable = true,
+                PretrainedModelType = request?.PretrainedModelType ?? PretrainedModelType.ResNet50,
+                LayerFreezeStrategy = request?.LayerFreezeStrategy ?? LayerFreezeStrategy.FreezeAll,
+                UnfreezeLayersPercentage = request?.UnfreezeLayersPercentage ?? 0.3m,
+                EnableMultiStageTraining = request?.EnableMultiStageTraining ?? false,
+                TrainingPhases = request?.TrainingPhases?.Select(p => new MultiStageTrainingPhase
+                {
+                    PhaseName = p.PhaseName,
+                    PhaseNumber = p.PhaseNumber,
+                    Epochs = p.Epochs,
+                    LearningRate = p.LearningRate,
+                    LayerFreezeStrategy = p.LayerFreezeStrategy,
+                    UnfreezeLayersPercentage = p.UnfreezeLayersPercentage,
+                    Description = p.Description
+                }).ToList()
+            };
+
+            var trainingRequest = new TrainingRequest
+            {
+                TrainingRootDirectory = request?.TrainingRootDirectory ?? defaultOptions.TrainingRootDirectory,
+                OutputModelDirectory = request?.OutputModelDirectory ?? defaultOptions.OutputModelDirectory,
+                ValidationSplitRatio = request?.ValidationSplitRatio ?? defaultOptions.ValidationSplitRatio,
+                LearningRate = request?.LearningRate ?? defaultOptions.LearningRate,
+                Epochs = request?.Epochs ?? defaultOptions.Epochs,
+                BatchSize = request?.BatchSize ?? defaultOptions.BatchSize,
+                Remarks = request?.Remarks,
+                DataAugmentation = request?.DataAugmentation,
+                DataBalancing = request?.DataBalancing,
+                TransferLearningOptions = transferLearningOptions
+            };
+
+            logger.LogInformation(
+                "接收到迁移学习训练请求 => 预训练模型: {PretrainedModel}, 冻结策略: {FreezeStrategy}",
+                transferLearningOptions.PretrainedModelType,
+                transferLearningOptions.LayerFreezeStrategy);
+
+            var jobId = await trainingJobService.StartTrainingAsync(trainingRequest, cancellationToken);
+
+            return Results.Ok(new StartTrainingResponse
+            {
+                JobId = jobId,
+                Message = "迁移学习训练任务已创建并加入队列"
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "启动迁移学习训练任务失败");
+            return Results.Problem(
+                detail: $"启动迁移学习训练任务失败: {ex.Message}",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
     }
 }

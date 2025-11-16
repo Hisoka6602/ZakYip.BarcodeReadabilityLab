@@ -51,4 +51,9 @@ public record class TrainingRequest
     /// 数据平衡配置
     /// </summary>
     public DataBalancingOptions DataBalancing { get; init; } = new();
+
+    /// <summary>
+    /// 迁移学习配置（可选）
+    /// </summary>
+    public TransferLearningOptions? TransferLearningOptions { get; init; }
 }

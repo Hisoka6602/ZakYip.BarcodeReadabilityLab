@@ -173,17 +173,31 @@ public sealed class TrainingWorker : BackgroundService
                     request.DataBalancing.ShuffleAfterBalancing);
             }
 
-            var trainingResult = await _trainer.TrainAsync(
-                request.TrainingRootDirectory,
-                request.OutputModelDirectory,
-                request.LearningRate,
-                request.Epochs,
-                request.BatchSize,
-                request.ValidationSplitRatio,
-                request.DataAugmentation,
-                request.DataBalancing,
-                progressCallback,
-                cancellationToken);
+            // 根据是否启用迁移学习选择不同的训练方法
+            var trainingResult = request.TransferLearningOptions?.Enable == true
+                ? await _trainer.TrainWithTransferLearningAsync(
+                    request.TrainingRootDirectory,
+                    request.OutputModelDirectory,
+                    request.LearningRate,
+                    request.Epochs,
+                    request.BatchSize,
+                    request.ValidationSplitRatio,
+                    request.TransferLearningOptions,
+                    request.DataAugmentation,
+                    request.DataBalancing,
+                    progressCallback,
+                    cancellationToken)
+                : await _trainer.TrainAsync(
+                    request.TrainingRootDirectory,
+                    request.OutputModelDirectory,
+                    request.LearningRate,
+                    request.Epochs,
+                    request.BatchSize,
+                    request.ValidationSplitRatio,
+                    request.DataAugmentation,
+                    request.DataBalancing,
+                    progressCallback,
+                    cancellationToken);
 
             _logger.LogInformation("训练任务完成，JobId: {JobId}, 模型文件: {ModelFilePath}, 准确率: {Accuracy:P2}",
                 jobId, trainingResult.ModelFilePath, trainingResult.EvaluationMetrics.Accuracy);

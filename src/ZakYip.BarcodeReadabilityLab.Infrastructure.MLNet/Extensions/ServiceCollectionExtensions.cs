@@ -42,6 +42,15 @@ public static class ServiceCollectionExtensions
         // 注册 IHyperparameterTuner 实现
         services.AddSingleton<IHyperparameterTuner, MlNetHyperparameterTuner>();
 
+        // 注册 IPretrainedModelManager 实现
+        services.AddSingleton<IPretrainedModelManager>(sp =>
+        {
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PretrainedModelManager>>();
+            var modelsDirectory = configuration.GetValue<string>("PretrainedModels:Directory") 
+                ?? Path.Combine(AppContext.BaseDirectory, "pretrained-models");
+            return new PretrainedModelManager(logger, modelsDirectory);
+        });
+
         return services;
     }
 
@@ -73,6 +82,14 @@ public static class ServiceCollectionExtensions
 
         // 注册 IHyperparameterTuner 实现
         services.AddSingleton<IHyperparameterTuner, MlNetHyperparameterTuner>();
+
+        // 注册 IPretrainedModelManager 实现（使用默认目录）
+        services.AddSingleton<IPretrainedModelManager>(sp =>
+        {
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PretrainedModelManager>>();
+            var modelsDirectory = Path.Combine(AppContext.BaseDirectory, "pretrained-models");
+            return new PretrainedModelManager(logger, modelsDirectory);
+        });
 
         return services;
     }
