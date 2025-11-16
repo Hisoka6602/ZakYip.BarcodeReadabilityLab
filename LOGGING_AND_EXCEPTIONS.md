@@ -4,6 +4,8 @@
 
 本文档说明了系统中实施的结构化日志和自定义异常处理机制。
 
+**最新更新**: 系统日志配置已完善，新增了动态日志级别调整、审计日志、性能监控等高级特性。详见 [LOGGING_ENHANCEMENTS.md](LOGGING_ENHANCEMENTS.md)。
+
 ## 结构化日志配置
 
 ### Serilog 集成

@@ -1,4 +1,5 @@
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ZakYip.BarcodeReadabilityLab.Service.Workers;
 using ZakYip.BarcodeReadabilityLab.Service.Services;
 using ZakYip.BarcodeReadabilityLab.Service.Endpoints;
+using ZakYip.BarcodeReadabilityLab.Service.Middleware;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Service.Configuration;
@@ -19,8 +21,12 @@ using ZakYip.BarcodeReadabilityLab.Application.Extensions;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Extensions;
 
+// 创建动态日志级别开关
+var levelSwitch = new LoggingLevelSwitch();
+
 // 配置 Serilog 日志
 Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.ControlledBy(levelSwitch)
     .ReadFrom.Configuration(new ConfigurationBuilder()
         .SetBasePath(Directory.GetCurrentDirectory())
         .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -53,6 +59,12 @@ try
         builder.Configuration.GetSection("BarcodeReadabilityService"));
     builder.Services.Configure<ApiSettings>(
         builder.Configuration.GetSection("ApiSettings"));
+    builder.Services.Configure<LoggingOptions>(
+        builder.Configuration.GetSection("LoggingOptions"));
+
+    // 注册动态日志级别管理服务
+    builder.Services.AddSingleton(levelSwitch);
+    builder.Services.AddSingleton<ILogLevelManager, LogLevelManager>();
 
     // 注册 ML.NET 服务 (包括 BarcodeMlModelOptions 配置绑定)
     builder.Services.AddMlNetBarcodeAnalyzer(builder.Configuration);
@@ -166,6 +178,9 @@ try
 
     app.UseRouting();
 
+    // 启用审计日志和性能监控中间件
+    app.UseAuditLogging();
+
     // 启用 Swagger 中间件
     app.UseSwagger(options =>
     {
@@ -190,6 +205,7 @@ try
     // 注册 Minimal API 端点
     app.MapTrainingEndpoints();
     app.MapModelEndpoints();
+    app.MapLoggingEndpoints();
 
     // 注册传统 MVC 控制器（向后兼容）
     app.MapControllers();
