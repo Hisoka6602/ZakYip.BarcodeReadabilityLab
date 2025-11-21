@@ -38,6 +38,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ModelVersionService>();
         services.AddScoped<IModelVersionService>(sp => sp.GetRequiredService<ModelVersionService>());
 
+        // 注册启动配置自检服务
+        services.AddSingleton<IStartupSelfCheckService, StartupSelfCheckService>();
+
+        // 注册仿真数据生成器
+        services.AddSingleton<ISimulationDataGenerator, SimulationDataGenerator>();
+
         // 注册训练任务恢复服务（在其他服务启动前执行）
         services.AddHostedService<TrainingJobRecoveryService>();
 
