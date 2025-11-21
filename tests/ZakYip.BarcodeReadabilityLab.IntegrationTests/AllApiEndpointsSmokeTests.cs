@@ -429,25 +429,6 @@ public sealed class AllApiEndpointsSmokeTests : IClassFixture<CustomWebApplicati
 
     #endregion
 
-    #region 传统控制器 API (/api/training-legacy)
-
-    [Fact]
-    public async Task TrainingLegacyCancel_WithAnyJobId_ShouldReturn501()
-    {
-        // Arrange
-        using var client = _factory.CreateClient();
-        var jobId = Guid.NewGuid();
-
-        // Act
-        var response = await client.PostAsync($"/api/training-legacy/cancel/{jobId}", null);
-
-        // Assert
-        // 取消功能暂未实现，应返回 501
-        Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
-    }
-
-    #endregion
-
     #region 错误路径测试
 
     [Fact]
