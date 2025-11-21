@@ -6,17 +6,22 @@ using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
-/// 训练任务管理控制器
+/// 训练任务管理控制器（传统 MVC API，已废弃）
 /// </summary>
 /// <remarks>
 /// 提供完整的条码可读性模型训练任务管理功能，包括：
 /// - 启动训练任务
 /// - 查询训练任务状态
 /// 
-/// 支持与训练任务持久化存储集成，可查询历史任务记录。
+/// ⚠️ 已废弃：此控制器已被 /api/training 下的 Minimal API 端点替代。
+/// 建议使用以下端点：
+/// - POST /api/training/start - 启动训练任务
+/// - GET /api/training/status/{jobId} - 查询训练任务状态
+/// - GET /api/training/history - 获取训练历史
 /// </remarks>
 [ApiController]
 [Route("api/training-job")]
+[Obsolete("此控制器已废弃，请使用 /api/training 下的 Minimal API 端点")]
 public class TrainingJobController : ControllerBase
 {
     private readonly ITrainingJobService _trainingJobService;
@@ -31,7 +36,7 @@ public class TrainingJobController : ControllerBase
     }
 
     /// <summary>
-    /// 启动训练任务
+    /// 启动训练任务（已废弃，请使用 POST /api/training/start）
     /// </summary>
     /// <param name="request">训练请求参数</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -39,19 +44,11 @@ public class TrainingJobController : ControllerBase
     /// <response code="200">训练任务成功创建并加入队列</response>
     /// <response code="400">请求参数无效或训练目录不存在</response>
     /// <response code="500">服务器内部错误</response>
-    /// <example>
-    /// POST /api/training-job/start
-    /// {
-    ///   "trainingRootDirectory": "C:\\BarcodeImages\\Training",
-    ///   "outputModelDirectory": "C:\\Models\\Output",
-    ///   "validationSplitRatio": 0.2,
-    ///   "remarks": "第一次训练测试"
-    /// }
-    /// </example>
     [HttpPost("start")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
+    [Obsolete("请使用 POST /api/training/start 端点")]
     public async Task<IActionResult> StartTrainingAsync(
         [FromBody] TrainingRequest request,
         CancellationToken cancellationToken = default)
@@ -89,7 +86,7 @@ public class TrainingJobController : ControllerBase
     }
 
     /// <summary>
-    /// 查询训练任务状态
+    /// 查询训练任务状态（已废弃，请使用 GET /api/training/status/{jobId}）
     /// </summary>
     /// <param name="jobId">训练任务 ID（GUID 格式）</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -100,7 +97,11 @@ public class TrainingJobController : ControllerBase
     [HttpGet("status/{jobId:guid}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
+    [HttpGet("status/{jobId:guid}")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
+    [Obsolete("请使用 GET /api/training/status/{jobId} 端点")]
     public async Task<IActionResult> GetStatusAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)
