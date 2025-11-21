@@ -62,10 +62,18 @@ public class TrainingJobDbContext : DbContext
             entity.Property(e => e.Progress)
                 .HasPrecision(18, 6);
             
+            // 将 DateTimeOffset 转换为 Unix 时间戳（毫秒）以支持 SQLite ORDER BY
             entity.Property(e => e.StartTime)
-                .IsRequired();
+                .IsRequired()
+                .HasConversion(
+                    v => v.ToUnixTimeMilliseconds(),
+                    v => DateTimeOffset.FromUnixTimeMilliseconds(v));
             
-            entity.Property(e => e.CompletedTime);
+            // 将可空 DateTimeOffset 转换为可空 Unix 时间戳（毫秒）
+            entity.Property(e => e.CompletedTime)
+                .HasConversion(
+                    v => v.HasValue ? v.Value.ToUnixTimeMilliseconds() : (long?)null,
+                    v => v.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : (DateTimeOffset?)null);
             
             entity.Property(e => e.ErrorMessage)
                 .HasMaxLength(2000);
@@ -159,8 +167,12 @@ public class TrainingJobDbContext : DbContext
             entity.Property(e => e.LogLoss)
                 .HasPrecision(18, 6);
 
+            // 将 DateTimeOffset 转换为 Unix 时间戳（毫秒）以支持 SQLite ORDER BY
             entity.Property(e => e.CreatedAt)
-                .IsRequired();
+                .IsRequired()
+                .HasConversion(
+                    v => v.ToUnixTimeMilliseconds(),
+                    v => DateTimeOffset.FromUnixTimeMilliseconds(v));
 
             entity.HasIndex(e => e.IsActive);
             entity.HasIndex(e => e.DeploymentSlot);
