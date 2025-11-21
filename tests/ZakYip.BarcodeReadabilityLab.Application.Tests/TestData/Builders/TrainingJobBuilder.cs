@@ -8,7 +8,7 @@ using ZakYip.BarcodeReadabilityLab.Core.Enums;
 /// </summary>
 public sealed class TrainingJobBuilder
 {
-    private Guid _jobId = Guid.NewGuid();
+    private Guid? _jobId = null;
     private string _trainingRootDirectory = Path.Combine(Path.GetTempPath(), "training");
     private string _outputModelDirectory = Path.Combine(Path.GetTempPath(), "output");
     private decimal? _validationSplitRatio = 0.2m;
@@ -232,7 +232,7 @@ public sealed class TrainingJobBuilder
     {
         return new TrainingJob
         {
-            JobId = _jobId,
+            JobId = _jobId ?? Guid.NewGuid(),
             TrainingRootDirectory = _trainingRootDirectory,
             OutputModelDirectory = _outputModelDirectory,
             ValidationSplitRatio = _validationSplitRatio,

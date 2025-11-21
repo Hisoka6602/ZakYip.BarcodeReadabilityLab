@@ -97,9 +97,6 @@ public class TrainingJobController : ControllerBase
     [HttpGet("status/{jobId:guid}")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
-    [HttpGet("status/{jobId:guid}")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
     [Obsolete("请使用 GET /api/training/status/{jobId} 端点")]
     public async Task<IActionResult> GetStatusAsync(

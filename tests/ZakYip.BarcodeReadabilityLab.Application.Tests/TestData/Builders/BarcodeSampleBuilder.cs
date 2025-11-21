@@ -7,7 +7,7 @@ using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 /// </summary>
 public sealed class BarcodeSampleBuilder
 {
-    private Guid _sampleId = Guid.NewGuid();
+    private Guid? _sampleId = null;
     private string _filePath = Path.Combine(Path.GetTempPath(), "sample.jpg");
     private DateTimeOffset _capturedAt = DateTimeOffset.UtcNow;
     private string? _cameraId = null;
@@ -55,7 +55,7 @@ public sealed class BarcodeSampleBuilder
     {
         return new BarcodeSample
         {
-            SampleId = _sampleId,
+            SampleId = _sampleId ?? Guid.NewGuid(),
             FilePath = _filePath,
             CapturedAt = _capturedAt,
             CameraId = _cameraId

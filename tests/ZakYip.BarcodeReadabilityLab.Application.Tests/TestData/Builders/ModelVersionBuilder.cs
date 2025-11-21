@@ -7,7 +7,7 @@ using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 /// </summary>
 public sealed class ModelVersionBuilder
 {
-    private Guid _versionId = Guid.NewGuid();
+    private Guid? _versionId = null;
     private string _versionName = $"v-{DateTime.UtcNow:yyyyMMdd-HHmmss}";
     private string _modelPath = Path.Combine(Path.GetTempPath(), "model.zip");
     private Guid? _trainingJobId = null;
@@ -162,7 +162,7 @@ public sealed class ModelVersionBuilder
     {
         return new ModelVersion
         {
-            VersionId = _versionId,
+            VersionId = _versionId ?? Guid.NewGuid(),
             VersionName = _versionName,
             ModelPath = _modelPath,
             TrainingJobId = _trainingJobId,
