@@ -6,6 +6,7 @@ using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 namespace ZakYip.BarcodeReadabilityLab.Application.Tests;
 
@@ -126,7 +127,7 @@ public class TrainingJobServiceTests
         var status = await service.GetStatusAsync(jobId);
 
         Assert.NotNull(status);
-        Assert.Equal(TrainingStatus.Running, status!.Status);
+        Assert.Equal(TrainingJobState.Running, status!.Status);
         Assert.Equal(trainingJob.Progress, status.Progress);
         Assert.Equal(trainingJob.DataAugmentation, status.DataAugmentation);
         Assert.Equal(trainingJob.DataBalancing, status.DataBalancing);

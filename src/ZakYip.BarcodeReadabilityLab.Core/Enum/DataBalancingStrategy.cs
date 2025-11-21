@@ -1,6 +1,6 @@
-namespace ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-
 using System.Text.Json.Serialization;
+
+namespace ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 数据平衡策略

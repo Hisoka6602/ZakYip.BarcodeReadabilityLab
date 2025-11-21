@@ -1,3 +1,4 @@
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using System.Net;
 using System.Net.Http.Json;
 using ZakYip.BarcodeReadabilityLab.Service.Endpoints;

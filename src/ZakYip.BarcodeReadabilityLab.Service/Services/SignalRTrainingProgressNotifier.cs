@@ -5,6 +5,7 @@ using System.Threading.Channels;
 using Microsoft.AspNetCore.SignalR;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using ZakYip.BarcodeReadabilityLab.Service.Hubs;
 
 /// <summary>

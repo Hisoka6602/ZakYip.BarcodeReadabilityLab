@@ -1,5 +1,6 @@
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 namespace ZakYip.BarcodeReadabilityLab.Service.Tests;
 

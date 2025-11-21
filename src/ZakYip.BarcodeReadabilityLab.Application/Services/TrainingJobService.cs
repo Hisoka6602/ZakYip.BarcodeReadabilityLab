@@ -8,6 +8,7 @@ using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 训练任务服务实现
@@ -336,15 +337,15 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
     /// <summary>
     /// 映射领域状态到应用层状态
     /// </summary>
-    private static TrainingStatus MapToTrainingStatus(TrainingJobState state)
+    private static TrainingJobState MapToTrainingStatus(TrainingJobState state)
     {
         return state switch
         {
-            TrainingJobState.Queued => TrainingStatus.Queued,
-            TrainingJobState.Running => TrainingStatus.Running,
-            TrainingJobState.Completed => TrainingStatus.Completed,
-            TrainingJobState.Failed => TrainingStatus.Failed,
-            TrainingJobState.Cancelled => TrainingStatus.Cancelled,
+            TrainingJobState.Queued => TrainingJobState.Queued,
+            TrainingJobState.Running => TrainingJobState.Running,
+            TrainingJobState.Completed => TrainingJobState.Completed,
+            TrainingJobState.Failed => TrainingJobState.Failed,
+            TrainingJobState.Cancelled => TrainingJobState.Cancelled,
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, "未知的训练任务状态")
         };
     }

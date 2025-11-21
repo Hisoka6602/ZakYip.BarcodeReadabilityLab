@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
@@ -158,11 +159,11 @@ public class TrainingController : ControllerBase
     {
         var stateDescription = status.Status switch
         {
-            TrainingStatus.Queued => "排队中",
-            TrainingStatus.Running => "运行中",
-            TrainingStatus.Completed => "已完成",
-            TrainingStatus.Failed => "失败",
-            TrainingStatus.Cancelled => "已取消",
+            TrainingJobState.Queued => "排队中",
+            TrainingJobState.Running => "运行中",
+            TrainingJobState.Completed => "已完成",
+            TrainingJobState.Failed => "失败",
+            TrainingJobState.Cancelled => "已取消",
             _ => "未知状态"
         };
 
@@ -176,11 +177,11 @@ public class TrainingController : ControllerBase
             BatchSize = status.BatchSize,
             Message = status.Status switch
             {
-                TrainingStatus.Queued => "训练任务排队中",
-                TrainingStatus.Running => "训练任务正在执行",
-                TrainingStatus.Completed => "训练任务已完成",
-                TrainingStatus.Failed => $"训练任务失败: {status.ErrorMessage}",
-                TrainingStatus.Cancelled => "训练任务已取消",
+                TrainingJobState.Queued => "训练任务排队中",
+                TrainingJobState.Running => "训练任务正在执行",
+                TrainingJobState.Completed => "训练任务已完成",
+                TrainingJobState.Failed => $"训练任务失败: {status.ErrorMessage}",
+                TrainingJobState.Cancelled => "训练任务已取消",
                 _ => "未知状态"
             },
             StartTime = status.StartTime,

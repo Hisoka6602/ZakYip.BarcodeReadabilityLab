@@ -1,6 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Models;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 训练结果

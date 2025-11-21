@@ -1,6 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Service.Models;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 预训练模型响应

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using ZakYip.BarcodeReadabilityLab.Service.Controllers;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
@@ -71,7 +72,7 @@ public sealed class TrainingControllerTests
         var status = new TrainingJobStatus
         {
             JobId = jobId,
-            Status = TrainingStatus.Running,
+            Status = TrainingJobState.Running,
             Progress = 0.5m,
             LearningRate = 0.02m,
             Epochs = 30,

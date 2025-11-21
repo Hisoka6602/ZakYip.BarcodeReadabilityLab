@@ -1,6 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Application.Services;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 训练任务状态
@@ -15,7 +16,7 @@ public record class TrainingJobStatus
     /// <summary>
     /// 训练任务状态
     /// </summary>
-    public required TrainingStatus Status { get; init; }
+    public required TrainingJobState Status { get; init; }
 
     /// <summary>
     /// 训练进度百分比（0.0 到 1.0 之间）

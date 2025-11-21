@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+namespace ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 条码读取失败的原因类型

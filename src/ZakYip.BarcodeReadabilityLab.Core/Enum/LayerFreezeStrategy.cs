@@ -1,6 +1,6 @@
-namespace ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-
 using System.ComponentModel;
+
+namespace ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 层冻结策略
