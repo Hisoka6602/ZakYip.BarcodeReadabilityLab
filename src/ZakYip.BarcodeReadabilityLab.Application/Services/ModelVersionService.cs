@@ -60,6 +60,7 @@ public sealed class ModelVersionService : IModelVersionService
             VersionName = registration.VersionName.Trim(),
             ModelPath = registration.ModelPath.Trim(),
             TrainingJobId = registration.TrainingJobId,
+            ParentModelVersionId = registration.ParentModelVersionId,
             CreatedAt = createdAt,
             IsActive = registration.SetAsActive,
             DeploymentSlot = string.IsNullOrWhiteSpace(registration.DeploymentSlot) ? "Production" : registration.DeploymentSlot.Trim(),

@@ -25,6 +25,11 @@ public sealed record class ModelVersionRegistration
     public Guid? TrainingJobId { get; init; }
 
     /// <summary>
+    /// 父模型版本 ID（用于增量训练时建立模型版本谱系）
+    /// </summary>
+    public Guid? ParentModelVersionId { get; init; }
+
+    /// <summary>
     /// 指定部署槽位（默认 Production）
     /// </summary>
     public string DeploymentSlot { get; init; } = "Production";
