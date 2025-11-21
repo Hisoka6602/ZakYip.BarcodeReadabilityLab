@@ -63,4 +63,57 @@ public record class ModelVersion
     /// 模型评估指标快照
     /// </summary>
     public ModelEvaluationMetrics? EvaluationMetrics { get; init; }
+
+    /// <summary>
+    /// 激活当前模型版本
+    /// </summary>
+    /// <returns>激活后的模型版本实例</returns>
+    public ModelVersion Activate()
+    {
+        return this with
+        {
+            IsActive = true
+        };
+    }
+
+    /// <summary>
+    /// 停用当前模型版本
+    /// </summary>
+    /// <returns>停用后的模型版本实例</returns>
+    public ModelVersion Deactivate()
+    {
+        return this with
+        {
+            IsActive = false
+        };
+    }
+
+    /// <summary>
+    /// 更新流量权重
+    /// </summary>
+    /// <param name="trafficPercentage">新的流量权重（0.0 到 1.0 之间）</param>
+    /// <returns>更新流量权重后的模型版本实例</returns>
+    public ModelVersion UpdateTrafficPercentage(decimal trafficPercentage)
+    {
+        if (trafficPercentage < 0.0m || trafficPercentage > 1.0m)
+            throw new ArgumentOutOfRangeException(nameof(trafficPercentage), "流量权重必须在 0.0 到 1.0 之间");
+
+        return this with
+        {
+            TrafficPercentage = trafficPercentage
+        };
+    }
+
+    /// <summary>
+    /// 更新备注信息
+    /// </summary>
+    /// <param name="notes">新的备注信息</param>
+    /// <returns>更新备注后的模型版本实例</returns>
+    public ModelVersion UpdateNotes(string? notes)
+    {
+        return this with
+        {
+            Notes = notes
+        };
+    }
 }
