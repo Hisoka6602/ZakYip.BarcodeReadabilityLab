@@ -127,7 +127,7 @@ public class TrainingJobServiceTests
         var status = await service.GetStatusAsync(jobId);
 
         Assert.NotNull(status);
-        Assert.Equal(TrainingStatus.Running, status!.Status);
+        Assert.Equal(TrainingJobState.Running, status!.Status);
         Assert.Equal(trainingJob.Progress, status.Progress);
         Assert.Equal(trainingJob.DataAugmentation, status.DataAugmentation);
         Assert.Equal(trainingJob.DataBalancing, status.DataBalancing);

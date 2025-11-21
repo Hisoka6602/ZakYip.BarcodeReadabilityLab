@@ -72,7 +72,7 @@ public sealed class TrainingControllerTests
         var status = new TrainingJobStatus
         {
             JobId = jobId,
-            Status = TrainingStatus.Running,
+            Status = TrainingJobState.Running,
             Progress = 0.5m,
             LearningRate = 0.02m,
             Epochs = 30,

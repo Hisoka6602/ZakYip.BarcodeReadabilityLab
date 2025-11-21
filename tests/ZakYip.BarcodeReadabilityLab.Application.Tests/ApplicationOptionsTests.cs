@@ -216,7 +216,7 @@ public sealed class ApplicationOptionsTests
     {
         // Arrange
         var jobId = Guid.NewGuid();
-        var status = TrainingStatus.Running;
+        var status = TrainingJobState.Running;
         var progress = 0.5m;
         var learningRate = 0.01m;
         var epochs = 50;

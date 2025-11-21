@@ -188,11 +188,11 @@ public static class TrainingEndpoints
                 BatchSize = status.BatchSize,
                 Message = status.Status switch
                 {
-                    Core.Enum.TrainingStatus.Queued => "训练任务排队中",
-                    Core.Enum.TrainingStatus.Running => "训练任务正在执行",
-                    Core.Enum.TrainingStatus.Completed => "训练任务已完成",
-                    Core.Enum.TrainingStatus.Failed => $"训练任务失败: {status.ErrorMessage}",
-                    Core.Enum.TrainingStatus.Cancelled => "训练任务已取消",
+                    Core.Enum.TrainingJobState.Queued => "训练任务排队中",
+                    Core.Enum.TrainingJobState.Running => "训练任务正在执行",
+                    Core.Enum.TrainingJobState.Completed => "训练任务已完成",
+                    Core.Enum.TrainingJobState.Failed => $"训练任务失败: {status.ErrorMessage}",
+                    Core.Enum.TrainingJobState.Cancelled => "训练任务已取消",
                     _ => "未知状态"
                 },
                 StartTime = status.StartTime,
@@ -238,11 +238,11 @@ public static class TrainingEndpoints
                 BatchSize = status.BatchSize,
                 Message = status.Status switch
                 {
-                    Core.Enum.TrainingStatus.Queued => "训练任务排队中",
-                    Core.Enum.TrainingStatus.Running => "训练任务正在执行",
-                    Core.Enum.TrainingStatus.Completed => "训练任务已完成",
-                    Core.Enum.TrainingStatus.Failed => $"训练任务失败: {status.ErrorMessage}",
-                    Core.Enum.TrainingStatus.Cancelled => "训练任务已取消",
+                    Core.Enum.TrainingJobState.Queued => "训练任务排队中",
+                    Core.Enum.TrainingJobState.Running => "训练任务正在执行",
+                    Core.Enum.TrainingJobState.Completed => "训练任务已完成",
+                    Core.Enum.TrainingJobState.Failed => $"训练任务失败: {status.ErrorMessage}",
+                    Core.Enum.TrainingJobState.Cancelled => "训练任务已取消",
                     _ => "未知状态"
                 },
                 StartTime = status.StartTime,
