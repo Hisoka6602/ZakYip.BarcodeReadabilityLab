@@ -1,6 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 超参数调优进度回调接口

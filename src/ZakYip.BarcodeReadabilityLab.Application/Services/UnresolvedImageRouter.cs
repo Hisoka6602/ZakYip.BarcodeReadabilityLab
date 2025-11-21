@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 无法分析图片路由服务实现

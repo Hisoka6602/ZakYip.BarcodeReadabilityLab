@@ -2,6 +2,7 @@ namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Services;
 
 using System;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// ML.NET 预测结果辅助方法

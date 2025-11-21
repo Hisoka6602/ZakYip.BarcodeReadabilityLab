@@ -1,6 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Application.Options;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 训练任务配置选项

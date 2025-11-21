@@ -8,6 +8,7 @@ using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 训练任务服务实现

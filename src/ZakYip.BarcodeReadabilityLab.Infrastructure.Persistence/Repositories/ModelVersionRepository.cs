@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Entities;
 

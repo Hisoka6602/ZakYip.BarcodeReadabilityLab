@@ -6,6 +6,7 @@ using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 namespace ZakYip.BarcodeReadabilityLab.Application.Tests;
 

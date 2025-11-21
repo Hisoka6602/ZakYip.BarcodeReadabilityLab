@@ -1,11 +1,11 @@
 using System.ComponentModel;
 
-namespace ZakYip.BarcodeReadabilityLab.Application.Services;
+namespace ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 训练任务状态枚举
 /// </summary>
-public enum TrainingStatus
+public enum TrainingJobState
 {
     /// <summary>
     /// 排队中

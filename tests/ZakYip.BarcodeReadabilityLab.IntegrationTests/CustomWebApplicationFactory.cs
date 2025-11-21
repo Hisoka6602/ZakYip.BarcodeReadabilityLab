@@ -1,3 +1,4 @@
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
@@ -9,13 +10,16 @@ namespace ZakYip.BarcodeReadabilityLab.IntegrationTests;
 
 public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private readonly string _testId = Guid.NewGuid().ToString("N");
+    
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        var sandboxRoot = Path.Combine(Path.GetTempPath(), "barcode-lab");
+        var sandboxRoot = Path.Combine(Path.GetTempPath(), "barcode-lab", _testId);
         var monitorPath = Path.Combine(sandboxRoot, "monitor");
         var unresolvedPath = Path.Combine(sandboxRoot, "unresolved");
         var trainingDataPath = Path.Combine(sandboxRoot, "training");
         var modelPath = Path.Combine(sandboxRoot, "models");
+        var dbPath = Path.Combine(sandboxRoot, $"test-{_testId}.db");
 
         Directory.CreateDirectory(monitorPath);
         Directory.CreateDirectory(unresolvedPath);
@@ -33,12 +37,14 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 ["BarcodeReadabilityService:ModelPath"] = modelPath,
                 ["ApiSettings:Urls"] = "http://127.0.0.1:0",
                 ["TrainingOptions:EnableResourceMonitoring"] = "false",
-                ["TrainingOptions:MaxConcurrentTrainingJobs"] = "1"
+                ["TrainingOptions:MaxConcurrentTrainingJobs"] = "1",
+                ["DatabasePath"] = dbPath
             });
         });
 
         builder.ConfigureServices(services =>
         {
+            // 移除目录监控后台服务
             var hostedServiceDescriptors = services
                 .Where(descriptor => descriptor.ServiceType == typeof(IHostedService) && descriptor.ImplementationType == typeof(DirectoryMonitoringWorker))
                 .ToList();
@@ -48,28 +54,54 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(descriptor);
             }
 
+            // 使用内存数据库替代 SQLite
             var dbContextDescriptor = services.SingleOrDefault(descriptor => descriptor.ServiceType == typeof(DbContextOptions<TrainingJobDbContext>));
             if (dbContextDescriptor is not null)
             {
                 services.Remove(dbContextDescriptor);
             }
 
+            // 使用唯一的内存数据库名称
             services.AddDbContext<TrainingJobDbContext>(options =>
             {
-                options.UseInMemoryDatabase("IntegrationTests");
+                options.UseInMemoryDatabase($"IntegrationTests-{_testId}");
                 options.ConfigureWarnings(warnings =>
                 {
                     warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning);
                 });
             });
 
+            // 使用假的训练器
             services.RemoveAll<IImageClassificationTrainer>();
             services.AddSingleton<IImageClassificationTrainer, FakeImageClassificationTrainer>();
 
+            // 初始化数据库
             using var serviceProvider = services.BuildServiceProvider();
             using var scope = serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<TrainingJobDbContext>();
             dbContext.Database.EnsureCreated();
         });
+    }
+    
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // 清理测试目录
+            var sandboxRoot = Path.Combine(Path.GetTempPath(), "barcode-lab", _testId);
+            if (Directory.Exists(sandboxRoot))
+            {
+                try
+                {
+                    Directory.Delete(sandboxRoot, recursive: true);
+                }
+                catch
+                {
+                    // 忽略清理错误
+                }
+            }
+        }
+        
+        base.Dispose(disposing);
     }
 }

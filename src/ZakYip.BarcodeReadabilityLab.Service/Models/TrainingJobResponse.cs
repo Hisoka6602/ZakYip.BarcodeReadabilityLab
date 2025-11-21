@@ -1,6 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Service.Models;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 训练任务响应模型（字段名使用小驼峰风格）

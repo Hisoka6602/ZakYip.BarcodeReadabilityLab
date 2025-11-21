@@ -1,4 +1,5 @@
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 namespace ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 

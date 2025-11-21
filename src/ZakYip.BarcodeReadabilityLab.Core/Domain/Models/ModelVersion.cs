@@ -1,3 +1,5 @@
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
+
 namespace ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 
 using System;

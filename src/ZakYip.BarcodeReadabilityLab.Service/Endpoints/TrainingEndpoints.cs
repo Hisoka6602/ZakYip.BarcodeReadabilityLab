@@ -10,6 +10,7 @@ using System.ComponentModel;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
 /// <summary>
@@ -187,11 +188,11 @@ public static class TrainingEndpoints
                 BatchSize = status.BatchSize,
                 Message = status.Status switch
                 {
-                    Application.Services.TrainingStatus.Queued => "训练任务排队中",
-                    Application.Services.TrainingStatus.Running => "训练任务正在执行",
-                    Application.Services.TrainingStatus.Completed => "训练任务已完成",
-                    Application.Services.TrainingStatus.Failed => $"训练任务失败: {status.ErrorMessage}",
-                    Application.Services.TrainingStatus.Cancelled => "训练任务已取消",
+                    Core.Enum.TrainingStatus.Queued => "训练任务排队中",
+                    Core.Enum.TrainingStatus.Running => "训练任务正在执行",
+                    Core.Enum.TrainingStatus.Completed => "训练任务已完成",
+                    Core.Enum.TrainingStatus.Failed => $"训练任务失败: {status.ErrorMessage}",
+                    Core.Enum.TrainingStatus.Cancelled => "训练任务已取消",
                     _ => "未知状态"
                 },
                 StartTime = status.StartTime,
@@ -237,11 +238,11 @@ public static class TrainingEndpoints
                 BatchSize = status.BatchSize,
                 Message = status.Status switch
                 {
-                    Application.Services.TrainingStatus.Queued => "训练任务排队中",
-                    Application.Services.TrainingStatus.Running => "训练任务正在执行",
-                    Application.Services.TrainingStatus.Completed => "训练任务已完成",
-                    Application.Services.TrainingStatus.Failed => $"训练任务失败: {status.ErrorMessage}",
-                    Application.Services.TrainingStatus.Cancelled => "训练任务已取消",
+                    Core.Enum.TrainingStatus.Queued => "训练任务排队中",
+                    Core.Enum.TrainingStatus.Running => "训练任务正在执行",
+                    Core.Enum.TrainingStatus.Completed => "训练任务已完成",
+                    Core.Enum.TrainingStatus.Failed => $"训练任务失败: {status.ErrorMessage}",
+                    Core.Enum.TrainingStatus.Cancelled => "训练任务已取消",
                     _ => "未知状态"
                 },
                 StartTime = status.StartTime,

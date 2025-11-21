@@ -1,5 +1,6 @@
 namespace ZakYip.BarcodeReadabilityLab.IntegrationTests;
 
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using System.Net;
 
 /// <summary>

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
 namespace ZakYip.BarcodeReadabilityLab.IntegrationTests.Api;

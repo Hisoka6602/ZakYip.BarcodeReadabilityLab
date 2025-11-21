@@ -2,6 +2,7 @@ namespace ZakYip.BarcodeReadabilityLab.Application.Services;
 
 using System;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 模型版本注册请求

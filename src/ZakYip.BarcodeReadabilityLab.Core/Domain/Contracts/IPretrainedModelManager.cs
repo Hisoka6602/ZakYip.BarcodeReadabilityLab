@@ -1,6 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 
 /// <summary>
 /// 预训练模型管理器接口

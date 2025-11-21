@@ -1,3 +1,4 @@
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using System.Net;
 using System.Net.Http.Json;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
@@ -151,8 +152,8 @@ public sealed class TrainingEndpointsTests : IClassFixture<CustomWebApplicationF
         {
             TrainingRootDirectory = dataset.TrainingRootDirectory,
             OutputModelDirectory = dataset.OutputModelDirectory,
-            PretrainedModelType = Core.Domain.Models.PretrainedModelType.ResNet50,
-            LayerFreezeStrategy = Core.Domain.Models.LayerFreezeStrategy.FreezeAll,
+            PretrainedModelType = PretrainedModelType.ResNet50,
+            LayerFreezeStrategy = LayerFreezeStrategy.FreezeAll,
             LearningRate = 0.001m,
             Epochs = 1,
             BatchSize = 2,

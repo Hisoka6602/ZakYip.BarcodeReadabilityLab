@@ -1,3 +1,4 @@
+using ZakYip.BarcodeReadabilityLab.Core.Enum;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
 namespace ZakYip.BarcodeReadabilityLab.IntegrationTests;
