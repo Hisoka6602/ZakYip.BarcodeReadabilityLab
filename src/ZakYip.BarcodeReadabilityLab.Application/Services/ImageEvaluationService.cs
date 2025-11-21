@@ -118,14 +118,15 @@ public class ImageEvaluationService : IImageEvaluationService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "评估图片失败 => 文件名: {FileName}", fileName);
-                // 继续处理其他图片，但记录错误
+                _logger.LogError(ex, "评估图片失败 => 文件名: {FileName}, 错误: {Error}", fileName, ex.Message);
+                // 继续处理其他图片，返回失败结果
+                // 注意：这里使用默认值是为了保持批量处理的继续性，实际错误已记录在日志中
                 items.Add(new BatchEvaluationItem
                 {
                     FileName = fileName,
                     Result = new SingleEvaluationResult
                     {
-                        PredictedLabel = NoreadReason.ClearButNotRecognized,
+                        PredictedLabel = NoreadReason.ClearButNotRecognized, // 使用默认值表示分析失败
                         Confidence = 0m,
                         ExpectedLabel = expectedLabel,
                         IsCorrect = false
@@ -186,8 +187,13 @@ public class ImageEvaluationService : IImageEvaluationService
     }
 
     /// <summary>
-    /// 获取原始分数（当前实现返回 null，需要扩展分析器以支持）
+    /// 获取原始分数
     /// </summary>
+    /// <remarks>
+    /// 注意：当前实现仅返回最高置信度的类别分数。
+    /// 要获取所有类别的完整概率分布，需要扩展 IBarcodeReadabilityAnalyzer 接口
+    /// 以从 ML.NET 预测输出中提取完整的 Score 数组。
+    /// </remarks>
     private Dictionary<NoreadReason, decimal>? GetRawScores(BarcodeAnalysisResult analysisResult)
     {
         // TODO: 需要扩展 IBarcodeReadabilityAnalyzer 以返回原始分数

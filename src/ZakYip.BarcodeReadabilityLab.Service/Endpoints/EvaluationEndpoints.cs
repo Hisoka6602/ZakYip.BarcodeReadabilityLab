@@ -292,9 +292,7 @@ public static class EvaluationEndpoints
                 // 获取预期标签
                 var expectedLabel = labelsMap?.GetValueOrDefault(imageFile.FileName);
 
-                // 打开流
-                var stream = imageFile.OpenReadStream();
-                imageList.Add((stream, imageFile.FileName, expectedLabel));
+                imageList.Add((imageFile.OpenReadStream(), imageFile.FileName, expectedLabel));
             }
 
             try
@@ -353,16 +351,25 @@ public static class EvaluationEndpoints
         }
     }
 
+    // 枚举描述缓存，提升性能
+    private static readonly Dictionary<Enum, string> _enumDescriptionCache = new();
+
     /// <summary>
-    /// 获取枚举的描述特性值
+    /// 获取枚举的描述特性值（带缓存）
     /// </summary>
     private static string GetEnumDescription(Enum value)
     {
+        if (_enumDescriptionCache.TryGetValue(value, out var cached))
+            return cached;
+
         var field = value.GetType().GetField(value.ToString());
         if (field is null)
             return value.ToString();
 
         var attribute = (DescriptionAttribute?)Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute));
-        return attribute?.Description ?? value.ToString();
+        var description = attribute?.Description ?? value.ToString();
+        
+        _enumDescriptionCache[value] = description;
+        return description;
     }
 }
