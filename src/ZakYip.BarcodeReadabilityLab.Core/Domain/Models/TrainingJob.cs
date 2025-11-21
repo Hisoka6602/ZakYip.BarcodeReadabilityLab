@@ -48,6 +48,26 @@ public record class TrainingJob
     public required TrainingJobType JobType { get; init; }
 
     /// <summary>
+    /// 使用的训练档位类型
+    /// </summary>
+    public TrainingProfileType? ProfileType { get; init; }
+
+    /// <summary>
+    /// 训练超参数快照（JSON 格式）
+    /// </summary>
+    public string? HyperparametersSnapshot { get; init; }
+
+    /// <summary>
+    /// 是否触发了早停
+    /// </summary>
+    public bool? TriggeredEarlyStopping { get; init; }
+
+    /// <summary>
+    /// 实际训练轮数（如果早停则小于配置的 Epochs）
+    /// </summary>
+    public int? ActualEpochs { get; init; }
+
+    /// <summary>
     /// 基础模型版本 ID（增量训练时必填，指向本次训练基于的模型版本）
     /// </summary>
     public Guid? BaseModelVersionId { get; init; }
