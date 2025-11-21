@@ -213,13 +213,11 @@ try
 
     Log.Information("应用程序已启动，正在监听地址：{Urls}", apiSettings.Urls);
     app.Run();
-
-    return 0;
 }
 catch (Exception ex)
 {
     Log.Fatal(ex, "应用程序启动失败");
-    return 1;
+    throw; // 在测试环境中重新抛出异常，在生产环境中退出代码会被调用者处理
 }
 finally
 {

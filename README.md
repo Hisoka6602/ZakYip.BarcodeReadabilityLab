@@ -1258,6 +1258,20 @@ dotnet ef database update PreviousMigrationName --project src/ZakYip.BarcodeRead
 
 ---
 
+## 📚 文档结构
+
+项目文档已按类别整理到 `docs` 目录下，包括：
+
+- **架构设计** - 系统架构和设计文档
+- **部署运维** - 部署和运维相关指南
+- **开发文档** - 开发者参考文档
+- **PR总结** - 功能实现总结
+- **测试文档** - 测试相关文档
+
+详细内容请查看 [docs/README.md](./docs/README.md)
+
+---
+
 ## 致谢
 
 感谢以下开源项目：
