@@ -8,6 +8,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using ZakYip.BarcodeReadabilityLab.Service;
 using Microsoft.Extensions.DependencyInjection;
 using ZakYip.BarcodeReadabilityLab.Service.Workers;
@@ -90,6 +92,18 @@ try
     // 注册 DirectoryMonitoringWorker 后台服务
     builder.Services.AddHostedService<DirectoryMonitoringWorker>();
 
+    // 注册健康检查
+    builder.Services.AddHealthChecks()
+        .AddCheck<ZakYip.BarcodeReadabilityLab.Service.HealthChecks.ConfigurationHealthCheck>(
+            "configuration",
+            tags: new[] { "ready" })
+        .AddCheck<ZakYip.BarcodeReadabilityLab.Service.HealthChecks.DatabaseHealthCheck>(
+            "database",
+            tags: new[] { "ready" })
+        .AddCheck<ZakYip.BarcodeReadabilityLab.Service.HealthChecks.ModelHealthCheck>(
+            "model",
+            tags: new[] { "ready" });
+
     // 配置 HTTP API
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
@@ -144,6 +158,44 @@ try
     });
 
     var app = builder.Build();
+
+    // 执行启动配置自检
+    using (var scope = app.Services.CreateScope())
+    {
+        var selfCheckService = scope.ServiceProvider.GetRequiredService<IStartupSelfCheckService>();
+        var analyzerOptions = scope.ServiceProvider.GetRequiredService<IOptions<BarcodeAnalyzerOptions>>().Value;
+        var trainingOptions = scope.ServiceProvider.GetRequiredService<IOptions<TrainingOptions>>().Value;
+        var simulationGenerator = scope.ServiceProvider.GetRequiredService<ISimulationDataGenerator>();
+
+        var checkResult = await selfCheckService.PerformSelfCheckAsync();
+
+        // 如果启用仿真模式，生成示例训练数据
+        if (trainingOptions.IsSimulationMode || analyzerOptions.IsSimulationMode)
+        {
+            Log.Information("🔧 仿真模式已启用，开始生成示例训练数据...");
+
+            var simulationDataPath = Path.Combine(
+                Path.GetTempPath(),
+                "BarcodeReadabilityLab_Simulation",
+                "TrainingData");
+
+            var simulationResult = await simulationGenerator.GenerateTrainingDataAsync(
+                simulationDataPath,
+                samplesPerClass: 5);
+
+            if (simulationResult.IsSuccess)
+            {
+                Log.Information("✅ 仿真训练数据生成成功：{ClassCount} 个类别，{TotalSamples} 个样本，路径：{Path}",
+                    simulationResult.ClassCount,
+                    simulationResult.TotalSamples,
+                    simulationResult.OutputDirectory);
+            }
+            else
+            {
+                Log.Warning("⚠️ 仿真训练数据生成失败：{ErrorMessage}", simulationResult.ErrorMessage);
+            }
+        }
+    }
 
     // 配置监听地址
     var apiSettings = builder.Configuration.GetSection("ApiSettings").Get<ApiSettings>() ?? new ApiSettings();
@@ -214,6 +266,77 @@ try
     app.MapModelEndpoints();
     app.MapLoggingEndpoints();
     app.MapPretrainedModelsEndpoints();
+
+    // 注册健康检查端点
+    app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        Predicate = _ => true,
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json";
+
+            var result = new
+            {
+                status = report.Status.ToString(),
+                checks = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString(),
+                    description = e.Value.Description,
+                    data = e.Value.Data
+                }),
+                totalDuration = report.TotalDuration.TotalMilliseconds
+            };
+
+            await context.Response.WriteAsJsonAsync(result, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+        }
+    }).WithMetadata(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(object), 200));
+
+    app.MapHealthChecks("/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready"),
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json";
+
+            var result = new
+            {
+                status = report.Status.ToString(),
+                checks = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString(),
+                    description = e.Value.Description,
+                    data = e.Value.Data
+                })
+            };
+
+            await context.Response.WriteAsJsonAsync(result, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+        }
+    }).WithMetadata(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(object), 200));
+
+    app.MapHealthChecks("/live", new HealthCheckOptions
+    {
+        Predicate = _ => false, // 仅检查进程是否存活，不执行任何检查
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                status = "Healthy",
+                timestamp = DateTime.UtcNow
+            }, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+        }
+    }).WithMetadata(new Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute(typeof(object), 200));
 
     // 注册传统 MVC 控制器（向后兼容）
     app.MapControllers();
