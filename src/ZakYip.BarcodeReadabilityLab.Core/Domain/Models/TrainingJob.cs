@@ -101,4 +101,77 @@ public record class TrainingJob
     /// 模型评估指标（训练完成后可用）
     /// </summary>
     public ModelEvaluationMetrics? EvaluationMetrics { get; init; }
+
+    /// <summary>
+    /// 将训练任务标记为运行中
+    /// </summary>
+    /// <returns>更新状态后的训练任务实例</returns>
+    public TrainingJob MarkRunning()
+    {
+        return this with
+        {
+            Status = TrainingJobState.Running
+        };
+    }
+
+    /// <summary>
+    /// 将训练任务标记为已完成
+    /// </summary>
+    /// <param name="evaluationMetrics">评估指标</param>
+    /// <returns>更新状态后的训练任务实例</returns>
+    public TrainingJob MarkCompleted(ModelEvaluationMetrics? evaluationMetrics = null)
+    {
+        return this with
+        {
+            Status = TrainingJobState.Completed,
+            CompletedTime = DateTimeOffset.UtcNow,
+            Progress = 1.0m,
+            EvaluationMetrics = evaluationMetrics,
+            ErrorMessage = null
+        };
+    }
+
+    /// <summary>
+    /// 将训练任务标记为失败
+    /// </summary>
+    /// <param name="errorMessage">错误信息</param>
+    /// <returns>更新状态后的训练任务实例</returns>
+    public TrainingJob MarkFailed(string errorMessage)
+    {
+        return this with
+        {
+            Status = TrainingJobState.Failed,
+            CompletedTime = DateTimeOffset.UtcNow,
+            ErrorMessage = errorMessage
+        };
+    }
+
+    /// <summary>
+    /// 将训练任务标记为已取消
+    /// </summary>
+    /// <returns>更新状态后的训练任务实例</returns>
+    public TrainingJob MarkCancelled()
+    {
+        return this with
+        {
+            Status = TrainingJobState.Cancelled,
+            CompletedTime = DateTimeOffset.UtcNow
+        };
+    }
+
+    /// <summary>
+    /// 更新训练进度
+    /// </summary>
+    /// <param name="progress">进度值（0.0 到 1.0 之间）</param>
+    /// <returns>更新进度后的训练任务实例</returns>
+    public TrainingJob UpdateProgress(decimal progress)
+    {
+        if (progress < 0.0m || progress > 1.0m)
+            throw new ArgumentOutOfRangeException(nameof(progress), "进度值必须在 0.0 到 1.0 之间");
+
+        return this with
+        {
+            Progress = progress
+        };
+    }
 }

@@ -79,26 +79,15 @@ public sealed class MlNetModelVariantAnalyzer : IModelVariantAnalyzer, IDisposab
             using var predictionEngine = _mlContext.Model.CreatePredictionEngine<MlNetImageInput, MlNetPredictionOutput>(loadedModel);
             var input = new MlNetImageInput { ImagePath = sample.FilePath };
             var prediction = predictionEngine.Predict(input);
-            var (reason, isSuccess) = MlNetPredictionMapper.MapLabelToNoreadReason(prediction.PredictedLabel);
 
-            if (!isSuccess)
+            // 使用统一的映射器
+            var analysisResult = MlNetPredictionMapper.MapToBarcodeAnalysisResult(prediction, sample.SampleId);
+
+            if (!analysisResult.IsAnalyzed)
             {
-                var message = $"无法识别的标签：{prediction.PredictedLabel}";
-                _logger.LogWarning("无法映射预测标签 => VersionId: {VersionId}, SampleId: {SampleId}, Label: {Label}", version.VersionId, sample.SampleId, prediction.PredictedLabel);
-                return BuildFailureResult(sample, version, message);
+                _logger.LogWarning("无法映射预测标签 => VersionId: {VersionId}, SampleId: {SampleId}, Label: {Label}", 
+                    version.VersionId, sample.SampleId, prediction.PredictedLabel);
             }
-
-            var maxScore = prediction.Score.Length > 0 ? prediction.Score.Max() : 0f;
-            var confidence = Convert.ToDecimal(maxScore);
-
-            var analysisResult = new BarcodeAnalysisResult
-            {
-                SampleId = sample.SampleId,
-                IsAnalyzed = true,
-                Reason = reason,
-                Confidence = confidence,
-                IsAboveThreshold = false
-            };
 
             return new ModelComparisonResult
             {
@@ -115,13 +104,7 @@ public sealed class MlNetModelVariantAnalyzer : IModelVariantAnalyzer, IDisposab
 
     private static ModelComparisonResult BuildFailureResult(BarcodeSample sample, ModelVersion version, string message)
     {
-        var analysisResult = new BarcodeAnalysisResult
-        {
-            SampleId = sample.SampleId,
-            IsAnalyzed = false,
-            IsAboveThreshold = false,
-            Message = message
-        };
+        var analysisResult = MlNetPredictionMapper.CreateFailureResult(sample.SampleId, message);
 
         return new ModelComparisonResult
         {

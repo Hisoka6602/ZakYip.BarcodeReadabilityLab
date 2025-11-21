@@ -164,57 +164,25 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
         if (_predictionEngine is null)
         {
             _logger.LogWarning("预测引擎未初始化，无法执行分析 => SampleId: {SampleId}。请确保模型文件存在或先训练模型", sample.SampleId);
-            return new BarcodeAnalysisResult
-            {
-                SampleId = sample.SampleId,
-                IsAnalyzed = false,
-                IsAboveThreshold = false,
-                Message = "模型未加载，分析功能不可用。请先训练模型或确保模型文件存在"
-            };
+            return MlNetPredictionMapper.CreateFailureResult(
+                sample.SampleId,
+                "模型未加载，分析功能不可用。请先训练模型或确保模型文件存在");
         }
 
         var input = new MlNetImageInput { ImagePath = sample.FilePath };
         var prediction = _predictionEngine.Predict(input);
 
-        var (reason, isSuccess) = MapLabelToNoreadReason(prediction.PredictedLabel);
+        // 使用统一的映射器
+        var result = MlNetPredictionMapper.MapToBarcodeAnalysisResult(prediction, sample.SampleId);
 
-        if (!isSuccess)
+        if (!result.IsAnalyzed)
         {
             _logger.LogWarning(
                 "无法将预测标签映射为 NoreadReason => SampleId: {SampleId}, 标签: {Label}",
                 sample.SampleId, prediction.PredictedLabel);
-
-            return new BarcodeAnalysisResult
-            {
-                SampleId = sample.SampleId,
-                IsAnalyzed = false,
-                IsAboveThreshold = false,
-                Message = $"无法识别的标签：{prediction.PredictedLabel}"
-            };
         }
 
-        var maxScore = prediction.Score.Length > 0 ? prediction.Score.Max() : 0f;
-        var confidence = Convert.ToDecimal(maxScore);
-
-        return new BarcodeAnalysisResult
-        {
-            SampleId = sample.SampleId,
-            IsAnalyzed = true,
-            Reason = reason,
-            Confidence = confidence,
-            IsAboveThreshold = false
-        };
-    }
-
-    /// <summary>
-    /// 将预测标签映射为 NoreadReason
-    /// </summary>
-    private (NoreadReason? reason, bool isSuccess) MapLabelToNoreadReason(string label)
-    {
-        if (string.IsNullOrWhiteSpace(label))
-            return (null, false);
-
-        return MlNetPredictionMapper.MapLabelToNoreadReason(label);
+        return result;
     }
 
     /// <summary>
