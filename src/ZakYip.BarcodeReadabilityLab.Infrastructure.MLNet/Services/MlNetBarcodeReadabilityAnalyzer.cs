@@ -93,8 +93,13 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
     }
 
     /// <summary>
-    /// 确保模型已加载
+    /// 确保模型已加载（如果可能）
     /// </summary>
+    /// <remarks>
+    /// 此方法尝试加载模型（如果尚未加载）。
+    /// 如果加载失败（例如模型文件不存在），方法不会抛出异常，
+    /// 而是记录警告日志。调用者应检查预测引擎是否可用。
+    /// </remarks>
     private void EnsureModelLoaded()
     {
         if (_predictionEngine is null)
@@ -119,14 +124,14 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
 
         if (string.IsNullOrWhiteSpace(modelPath))
         {
-            _logger.LogWarning("模型路径未配置，分析功能将不可用");
-            throw new ConfigurationException("ML.NET 模型路径未配置", "MODEL_PATH_NOT_CONFIGURED");
+            _logger.LogWarning("模型路径未配置，分析功能将不可用。请配置模型路径或训练新模型后再使用分析功能");
+            return;
         }
 
         if (!File.Exists(modelPath))
         {
-            _logger.LogError("模型文件不存在 => 模型路径: {ModelPath}", modelPath);
-            throw new ConfigurationException($"模型文件不存在：{modelPath}", "MODEL_FILE_NOT_FOUND");
+            _logger.LogWarning("模型文件不存在 => 模型路径: {ModelPath}。分析功能将不可用，请先训练模型或导入已有模型", modelPath);
+            return;
         }
 
         lock (_lock)
@@ -143,9 +148,9 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "加载 ML.NET 模型失败 => 模型路径: {ModelPath}, 错误类型: {ExceptionType}", 
-                    modelPath, ex.GetType().Name);
-                throw new AnalysisException($"加载模型失败：{modelPath}", "MODEL_LOAD_FAILED", ex);
+                _logger.LogError(ex, "加载 ML.NET 模型失败 => 模型路径: {ModelPath}, 错误类型: {ExceptionType}, 错误详情: {ErrorMessage}", 
+                    modelPath, ex.GetType().Name, ex.Message);
+                _logger.LogWarning("模型加载失败，分析功能将不可用。请检查模型文件是否损坏或重新训练模型。模型路径: {ModelPath}", modelPath);
             }
         }
     }
@@ -156,7 +161,16 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
     private BarcodeAnalysisResult PerformPrediction(BarcodeSample sample)
     {
         if (_predictionEngine is null)
-            throw new AnalysisException("预测引擎未初始化", "PREDICTION_ENGINE_NOT_INITIALIZED");
+        {
+            _logger.LogWarning("预测引擎未初始化，无法执行分析 => SampleId: {SampleId}。请确保模型文件存在或先训练模型", sample.SampleId);
+            return new BarcodeAnalysisResult
+            {
+                SampleId = sample.SampleId,
+                IsAnalyzed = false,
+                IsAboveThreshold = false,
+                Message = "模型未加载，分析功能不可用。请先训练模型或确保模型文件存在"
+            };
+        }
 
         var input = new MlNetImageInput { ImagePath = sample.FilePath };
         var prediction = _predictionEngine.Predict(input);
