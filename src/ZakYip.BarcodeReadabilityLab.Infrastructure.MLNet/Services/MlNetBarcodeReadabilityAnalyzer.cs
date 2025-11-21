@@ -93,8 +93,13 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
     }
 
     /// <summary>
-    /// 确保模型已加载
+    /// 确保模型已加载（如果可能）
     /// </summary>
+    /// <remarks>
+    /// 此方法尝试加载模型（如果尚未加载）。
+    /// 如果加载失败（例如模型文件不存在），方法不会抛出异常，
+    /// 而是记录警告日志。调用者应检查预测引擎是否可用。
+    /// </remarks>
     private void EnsureModelLoaded()
     {
         if (_predictionEngine is null)
@@ -143,9 +148,9 @@ public sealed class MlNetBarcodeReadabilityAnalyzer : IBarcodeReadabilityAnalyze
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "加载 ML.NET 模型失败 => 模型路径: {ModelPath}, 错误类型: {ExceptionType}", 
-                    modelPath, ex.GetType().Name);
-                _logger.LogWarning("模型加载失败，分析功能将不可用。请检查模型文件是否损坏或重新训练模型");
+                _logger.LogError(ex, "加载 ML.NET 模型失败 => 模型路径: {ModelPath}, 错误类型: {ExceptionType}, 错误详情: {ErrorMessage}", 
+                    modelPath, ex.GetType().Name, ex.Message);
+                _logger.LogWarning("模型加载失败，分析功能将不可用。请检查模型文件是否损坏或重新训练模型。模型路径: {ModelPath}", modelPath);
             }
         }
     }
