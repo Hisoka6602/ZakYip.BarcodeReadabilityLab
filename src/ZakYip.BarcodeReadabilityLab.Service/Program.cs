@@ -64,6 +64,8 @@ try
         builder.Configuration.GetSection("ApiSettings"));
     builder.Services.Configure<LoggingOptions>(
         builder.Configuration.GetSection("LoggingOptions"));
+    builder.Services.Configure<EvaluationOptions>(
+        builder.Configuration.GetSection("EvaluationOptions"));
 
     // 注册动态日志级别管理服务
     builder.Services.AddSingleton(levelSwitch);
@@ -266,6 +268,7 @@ try
     app.MapModelEndpoints();
     app.MapLoggingEndpoints();
     app.MapPretrainedModelsEndpoints();
+    app.MapEvaluationEndpoints();
 
     // 注册健康检查端点
     app.MapHealthChecks("/health", new HealthCheckOptions

@@ -44,6 +44,9 @@ public static class ServiceCollectionExtensions
         // 注册仿真数据生成器
         services.AddSingleton<ISimulationDataGenerator, SimulationDataGenerator>();
 
+        // 注册图片评估服务
+        services.AddScoped<IImageEvaluationService, ImageEvaluationService>();
+
         // 注册训练任务恢复服务（在其他服务启动前执行）
         services.AddHostedService<TrainingJobRecoveryService>();
 
