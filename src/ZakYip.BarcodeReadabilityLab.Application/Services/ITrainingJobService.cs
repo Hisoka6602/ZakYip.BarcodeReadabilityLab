@@ -18,6 +18,14 @@ public interface ITrainingJobService
     ValueTask<Guid> StartTrainingAsync(TrainingRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 启动增量训练任务
+    /// </summary>
+    /// <param name="request">增量训练请求</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>训练任务唯一标识符</returns>
+    ValueTask<Guid> StartIncrementalTrainingAsync(IncrementalTrainingRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 查询训练任务状态
     /// </summary>
     /// <param name="jobId">训练任务唯一标识符</param>

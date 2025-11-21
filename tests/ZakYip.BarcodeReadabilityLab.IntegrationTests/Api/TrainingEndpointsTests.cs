@@ -292,4 +292,58 @@ public sealed class TrainingEndpointsTests : IClassFixture<CustomWebApplicationF
 
         throw new TimeoutException($"训练任务 {jobId} 在 {timeout} 内未完成");
     }
+
+    [Fact]
+    public async Task StartIncrementalTraining_WithNonExistentBaseModel_ShouldReturnNotFound()
+    {
+        // Arrange
+        using var dataset = SyntheticTrainingDataset.Create(samplesPerClass: 2);
+        using var client = _factory.CreateClient();
+
+        var request = new IncrementalTrainingStartRequest
+        {
+            BaseModelVersionId = Guid.NewGuid(), // 不存在的模型版本
+            TrainingRootDirectory = dataset.TrainingRootDirectory,
+            OutputModelDirectory = dataset.OutputModelDirectory,
+            LearningRate = 0.0005m,
+            Epochs = 1,
+            BatchSize = 2,
+            Remarks = "增量训练测试 - 基础模型不存在"
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/training/incremental-start", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task IncrementalTrainingEndpoint_ShouldBeAccessible()
+    {
+        // Arrange
+        using var dataset = SyntheticTrainingDataset.Create(samplesPerClass: 2);
+        using var client = _factory.CreateClient();
+
+        var request = new IncrementalTrainingStartRequest
+        {
+            BaseModelVersionId = Guid.NewGuid(),
+            TrainingRootDirectory = dataset.TrainingRootDirectory,
+            OutputModelDirectory = dataset.OutputModelDirectory,
+            LearningRate = 0.0005m,
+            Epochs = 1,
+            BatchSize = 2
+        };
+
+        // Act
+        var response = await client.PostAsJsonAsync("/api/training/incremental-start", request);
+
+        // Assert
+        // 应该收到 404（模型不存在）或者如果模型存在则是 200/202
+        Assert.True(
+            response.StatusCode == HttpStatusCode.NotFound || 
+            response.StatusCode == HttpStatusCode.OK ||
+            response.StatusCode == HttpStatusCode.Accepted,
+            $"期望 200/202/404，实际得到 {(int)response.StatusCode}");
+    }
 }

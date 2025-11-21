@@ -36,6 +36,14 @@ public class TrainingJobDbContext : DbContext
             
             entity.Property(e => e.JobId)
                 .IsRequired();
+
+            entity.Property(e => e.JobType)
+                .IsRequired()
+                .HasConversion<int>();
+
+            entity.Property(e => e.BaseModelVersionId);
+
+            entity.Property(e => e.ParentTrainingJobId);
             
             entity.Property(e => e.TrainingRootDirectory)
                 .IsRequired()
@@ -112,6 +120,7 @@ public class TrainingJobDbContext : DbContext
             entity.Property(e => e.DataBalancingOptionsJson);
             entity.Property(e => e.DataAugmentationImpactJson);
 
+            entity.HasIndex(e => e.JobType);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartTime);
         });
@@ -130,6 +139,8 @@ public class TrainingJobDbContext : DbContext
             entity.Property(e => e.ModelPath)
                 .IsRequired()
                 .HasMaxLength(500);
+
+            entity.Property(e => e.ParentModelVersionId);
 
             entity.Property(e => e.DeploymentSlot)
                 .IsRequired()
@@ -173,6 +184,7 @@ public class TrainingJobDbContext : DbContext
             entity.HasIndex(e => e.IsActive);
             entity.HasIndex(e => e.DeploymentSlot);
             entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.ParentModelVersionId);
         });
     }
 }

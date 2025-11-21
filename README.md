@@ -316,10 +316,18 @@ ZakYip.BarcodeReadabilityLab/
 - ❌ 无数据标注工具
 
 #### 4. 高级训练功能
-- ❌ 迁移学习（基于预训练模型）
-- ❌ 分布式训练
-- ❌ 增量训练
+- ✅ 迁移学习（基于预训练模型）
+  - ✅ 支持多种预训练模型（ResNet50、InceptionV3、EfficientNet 等）
+  - ✅ 层冻结策略（全部冻结、部分冻结、全部解冻）
+  - ✅ 多阶段训练支持
+- ✅ 增量训练
+  - ✅ 基于历史模型版本的增量训练
+  - ✅ 模型版本谱系管理（ParentModelVersionId）
+  - ✅ 训练任务类型枚举（Full/Incremental/TransferLearning）
+  - ✅ 支持合并历史训练数据
+  - ✅ API 端点：POST /api/training/incremental-start
 - ✅ 自动超参数调优（网格搜索、随机搜索）
+- ❌ 分布式训练
 
 #### 5. 容器化部署
 - ❌ Docker 镜像
@@ -594,6 +602,78 @@ Content-Type: application/json
   "message": "迁移学习训练任务已创建并加入队列"
 }
 ```
+
+### 增量训练 API
+
+增量训练允许基于已有模型版本继续训练，实现模型的持续迭代和升级。
+
+#### 启动增量训练任务
+
+```http
+POST /api/training/incremental-start
+Content-Type: application/json
+
+{
+  "baseModelVersionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "trainingRootDirectory": "C:\\BarcodeImages\\IncrementalData\\2025-11-21",
+  "outputModelDirectory": "C:\\BarcodeImages\\Models",
+  "mergeWithHistoricalData": true,
+  "learningRate": 0.0005,
+  "epochs": 5,
+  "batchSize": 16,
+  "remarks": "2025-11-21 每日新增样本增量训练",
+  "dataAugmentation": {
+    "enable": true,
+    "augmentedImagesPerSample": 2
+  }
+}
+```
+
+**请求参数说明：**
+
+- `baseModelVersionId`（必填）：基础模型版本 ID，本次增量训练基于的模型版本
+- `trainingRootDirectory`（必填）：训练数据根目录路径，通常只包含最新收集/标注的样本
+- `outputModelDirectory`（必填）：训练输出模型文件存放目录路径
+- `mergeWithHistoricalData`（可选，默认 true）：
+  - `true`: 自动将历史训练数据索引与新数据合并，构造一个"新数据权重更高"的训练集
+  - `false`: 只使用新数据训练（更偏向"微调新 domain"）
+- `learningRate`（可选）：学习率，建议使用较小的值（如 0.0005）
+- `epochs`（可选）：训练轮数，建议使用较少的轮数（如 5）
+- `batchSize`（可选）：批大小
+- `remarks`（可选）：训练任务备注说明
+- `dataAugmentation`（可选）：数据增强配置
+- `dataBalancing`（可选）：数据平衡配置
+
+**响应 200 OK:**
+```json
+{
+  "jobId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "message": "增量训练任务已创建并加入队列",
+  "jobType": "Incremental",
+  "baseModelVersionId": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+}
+```
+
+**响应 404 Not Found:**（基础模型版本不存在）
+```json
+{
+  "error": "基础模型版本不存在: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+}
+```
+
+**增量训练使用场景：**
+
+1. **每日增量更新**：每天收集新的错误样本 → 标注 → 增量训练 → 生成新版本
+2. **持续改进**：基于线上反馈不断优化模型
+3. **新类别扩展**：在现有模型基础上添加新的条码类型识别能力
+4. **模型微调**：针对特定场景（如新仓库、新设备）进行模型适配
+
+**增量训练最佳实践：**
+
+- 使用较小的学习率（0.0001 - 0.001）避免破坏已有知识
+- 使用较少的训练轮数（3 - 10 epochs）
+- 优先使用 `mergeWithHistoricalData: true` 保持模型稳定性
+- 定期评估增量训练后的模型性能
 
 ### 模型管理 API
 

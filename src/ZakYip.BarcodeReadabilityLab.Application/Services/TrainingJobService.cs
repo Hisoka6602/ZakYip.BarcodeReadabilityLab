@@ -53,6 +53,7 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
         var trainingJob = new TrainingJob
         {
             JobId = jobId,
+            JobType = request.TransferLearningOptions?.Enable == true ? TrainingJobType.TransferLearning : TrainingJobType.Full,
             TrainingRootDirectory = request.TrainingRootDirectory,
             OutputModelDirectory = request.OutputModelDirectory,
             ValidationSplitRatio = request.ValidationSplitRatio,
@@ -109,6 +110,94 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
                 request.DataBalancing.Strategy,
                 request.DataBalancing.TargetSampleCountPerClass,
                 request.DataBalancing.ShuffleAfterBalancing);
+        }
+
+        return jobId;
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<Guid> StartIncrementalTrainingAsync(IncrementalTrainingRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request is null)
+            throw new ArgumentNullException(nameof(request));
+
+        ValidateIncrementalRequest(request);
+
+        // 验证基础模型版本是否存在
+        using var scope = _scopeFactory.CreateScope();
+        var modelVersionRepository = scope.ServiceProvider.GetRequiredService<IModelVersionRepository>();
+        var baseModelVersion = await modelVersionRepository.GetByIdAsync(request.BaseModelVersionId, cancellationToken);
+        
+        if (baseModelVersion is null)
+            throw new TrainingException($"基础模型版本不存在: {request.BaseModelVersionId}", "BASE_MODEL_NOT_FOUND");
+
+        var jobId = Guid.NewGuid();
+
+        // 获取父训练任务 ID
+        Guid? parentTrainingJobId = baseModelVersion.TrainingJobId;
+
+        // 创建增量训练任务领域模型
+        var trainingJob = new TrainingJob
+        {
+            JobId = jobId,
+            JobType = TrainingJobType.Incremental,
+            BaseModelVersionId = request.BaseModelVersionId,
+            ParentTrainingJobId = parentTrainingJobId,
+            TrainingRootDirectory = request.TrainingRootDirectory,
+            OutputModelDirectory = request.OutputModelDirectory,
+            ValidationSplitRatio = request.ValidationSplitRatio,
+            LearningRate = request.LearningRate,
+            Epochs = request.Epochs,
+            BatchSize = request.BatchSize,
+            Status = TrainingJobState.Queued,
+            Progress = 0.0m,
+            StartTime = DateTimeOffset.UtcNow,
+            Remarks = request.Remarks,
+            DataAugmentation = request.DataAugmentation,
+            DataBalancing = request.DataBalancing
+        };
+
+        // 持久化到数据库
+        var repository = scope.ServiceProvider.GetRequiredService<ITrainingJobRepository>();
+        await repository.AddAsync(trainingJob, cancellationToken);
+
+        // 将增量训练请求转换为通用训练请求并加入队列
+        // 注意：当前实现使用通用训练管道，MergeWithHistoricalData 选项暂未实现
+        // TODO: 在 ML.NET 训练器中实现历史数据合并逻辑
+        var generalRequest = new TrainingRequest
+        {
+            TrainingRootDirectory = request.TrainingRootDirectory,
+            OutputModelDirectory = request.OutputModelDirectory,
+            ValidationSplitRatio = request.ValidationSplitRatio,
+            LearningRate = request.LearningRate,
+            Epochs = request.Epochs,
+            BatchSize = request.BatchSize,
+            Remarks = request.Remarks,
+            DataAugmentation = request.DataAugmentation,
+            DataBalancing = request.DataBalancing
+        };
+
+        _jobQueue.Enqueue((jobId, generalRequest));
+
+        _logger.LogInformation(
+            "增量训练任务已加入队列 => JobId: {JobId}, 基础模型: {BaseModelVersionId}, 训练目录: {TrainingRootDirectory}, 合并历史数据: {MergeWithHistoricalData}, 学习率: {LearningRate}, Epochs: {Epochs}, BatchSize: {BatchSize}",
+            jobId,
+            request.BaseModelVersionId,
+            request.TrainingRootDirectory,
+            request.MergeWithHistoricalData,
+            request.LearningRate,
+            request.Epochs,
+            request.BatchSize);
+
+        if (request.DataAugmentation.Enable)
+        {
+            _logger.LogInformation(
+                "增量训练数据增强配置 => 副本数: {Copies}, 旋转: {RotationEnabled}/{RotationProbability:P0}, 水平翻转: {HorizontalEnabled}/{HorizontalProbability:P0}",
+                request.DataAugmentation.AugmentedImagesPerSample,
+                request.DataAugmentation.EnableRotation,
+                request.DataAugmentation.RotationProbability,
+                request.DataAugmentation.EnableHorizontalFlip,
+                request.DataAugmentation.HorizontalFlipProbability);
         }
 
         return jobId;
@@ -355,6 +444,71 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
     /// </summary>
     private void ValidateRequest(TrainingRequest request)
     {
+        if (string.IsNullOrWhiteSpace(request.TrainingRootDirectory))
+            throw new TrainingException("训练根目录路径不能为空", "TRAIN_DIR_EMPTY");
+
+        if (string.IsNullOrWhiteSpace(request.OutputModelDirectory))
+            throw new TrainingException("输出模型目录路径不能为空", "OUTPUT_DIR_EMPTY");
+
+        if (!Directory.Exists(request.TrainingRootDirectory))
+            throw new TrainingException($"训练根目录不存在: {request.TrainingRootDirectory}", "TRAIN_DIR_NOT_FOUND");
+
+        if (request.ValidationSplitRatio.HasValue)
+        {
+            var ratio = request.ValidationSplitRatio.Value;
+            if (ratio < 0.0m || ratio > 1.0m)
+                throw new TrainingException("验证集分割比例必须在 0.0 到 1.0 之间", "INVALID_SPLIT_RATIO");
+        }
+
+        if (request.LearningRate <= 0m || request.LearningRate > 1m)
+            throw new TrainingException("学习率必须在 0 到 1 之间（不含 0）", "INVALID_LEARNING_RATE");
+
+        if (request.Epochs < 1 || request.Epochs > 500)
+            throw new TrainingException("Epoch 数必须在 1 到 500 之间", "INVALID_EPOCHS");
+
+        if (request.BatchSize < 1 || request.BatchSize > 512)
+            throw new TrainingException("Batch Size 必须在 1 到 512 之间", "INVALID_BATCH_SIZE");
+
+        var augmentation = request.DataAugmentation;
+        if (augmentation is null)
+            throw new TrainingException("数据增强配置不能为空", "AUGMENTATION_NULL");
+
+        if (augmentation.AugmentedImagesPerSample < 0)
+            throw new TrainingException("数据增强副本数量不能为负数", "INVALID_AUGMENTATION_COPIES");
+
+        if (augmentation.EvaluationAugmentedImagesPerSample < 1)
+            throw new TrainingException("评估增强副本数量至少为 1", "INVALID_EVAL_AUGMENTATION_COPIES");
+
+        if (augmentation.RotationAngles is null)
+            throw new TrainingException("旋转角度集合不能为空", "INVALID_ROTATION_ANGLES");
+
+        ValidateProbability(augmentation.RotationProbability, "旋转概率", "INVALID_ROTATION_PROBABILITY");
+        ValidateProbability(augmentation.HorizontalFlipProbability, "水平翻转概率", "INVALID_HFLIP_PROBABILITY");
+        ValidateProbability(augmentation.VerticalFlipProbability, "垂直翻转概率", "INVALID_VFLIP_PROBABILITY");
+        ValidateProbability(augmentation.BrightnessProbability, "亮度调整概率", "INVALID_BRIGHTNESS_PROBABILITY");
+
+        if (augmentation.BrightnessLower <= 0 || augmentation.BrightnessUpper <= 0)
+            throw new TrainingException("亮度调整范围必须大于 0", "INVALID_BRIGHTNESS_RANGE");
+
+        if (augmentation.BrightnessLower > augmentation.BrightnessUpper)
+            throw new TrainingException("亮度调整下限不能大于上限", "INVALID_BRIGHTNESS_RANGE");
+
+        var balancing = request.DataBalancing;
+        if (balancing is null)
+            throw new TrainingException("数据平衡配置不能为空", "BALANCING_NULL");
+
+        if (balancing.TargetSampleCountPerClass.HasValue && balancing.TargetSampleCountPerClass <= 0)
+            throw new TrainingException("数据平衡目标样本数必须大于 0", "INVALID_BALANCING_TARGET");
+    }
+
+    /// <summary>
+    /// 验证增量训练请求
+    /// </summary>
+    private void ValidateIncrementalRequest(IncrementalTrainingRequest request)
+    {
+        if (request.BaseModelVersionId == Guid.Empty)
+            throw new TrainingException("基础模型版本 ID 不能为空", "BASE_MODEL_ID_EMPTY");
+
         if (string.IsNullOrWhiteSpace(request.TrainingRootDirectory))
             throw new TrainingException("训练根目录路径不能为空", "TRAIN_DIR_EMPTY");
 

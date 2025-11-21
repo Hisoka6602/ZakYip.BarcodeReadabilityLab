@@ -22,6 +22,21 @@ public class TrainingJobEntity
     public Guid JobId { get; set; }
 
     /// <summary>
+    /// 训练任务类型
+    /// </summary>
+    public TrainingJobType JobType { get; set; }
+
+    /// <summary>
+    /// 基础模型版本 ID（增量训练时必填）
+    /// </summary>
+    public Guid? BaseModelVersionId { get; set; }
+
+    /// <summary>
+    /// 父训练任务 ID（用于串联训练任务谱系）
+    /// </summary>
+    public Guid? ParentTrainingJobId { get; set; }
+
+    /// <summary>
     /// 训练数据根目录路径
     /// </summary>
     public string TrainingRootDirectory { get; set; } = string.Empty;
@@ -185,6 +200,9 @@ public class TrainingJobEntity
         return new TrainingJob
         {
             JobId = JobId,
+            JobType = JobType,
+            BaseModelVersionId = BaseModelVersionId,
+            ParentTrainingJobId = ParentTrainingJobId,
             TrainingRootDirectory = TrainingRootDirectory,
             OutputModelDirectory = OutputModelDirectory,
             ValidationSplitRatio = ValidationSplitRatio,
@@ -211,6 +229,9 @@ public class TrainingJobEntity
         return new TrainingJobEntity
         {
             JobId = model.JobId,
+            JobType = model.JobType,
+            BaseModelVersionId = model.BaseModelVersionId,
+            ParentTrainingJobId = model.ParentTrainingJobId,
             TrainingRootDirectory = model.TrainingRootDirectory,
             OutputModelDirectory = model.OutputModelDirectory,
             ValidationSplitRatio = model.ValidationSplitRatio,

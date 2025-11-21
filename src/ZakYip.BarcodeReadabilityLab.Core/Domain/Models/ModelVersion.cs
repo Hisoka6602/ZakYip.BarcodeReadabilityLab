@@ -30,6 +30,11 @@ public record class ModelVersion
     public Guid? TrainingJobId { get; init; }
 
     /// <summary>
+    /// 父模型版本 ID（用于构建模型版本树/链）
+    /// </summary>
+    public Guid? ParentModelVersionId { get; init; }
+
+    /// <summary>
     /// 模型版本创建时间
     /// </summary>
     public required DateTimeOffset CreatedAt { get; init; }

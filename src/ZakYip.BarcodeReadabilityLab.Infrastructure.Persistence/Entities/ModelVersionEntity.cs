@@ -16,6 +16,8 @@ public sealed class ModelVersionEntity
 
     public Guid? TrainingJobId { get; set; }
 
+    public Guid? ParentModelVersionId { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public bool IsActive { get; set; }
@@ -59,6 +61,7 @@ public sealed class ModelVersionEntity
             VersionName = version.VersionName,
             ModelPath = version.ModelPath,
             TrainingJobId = version.TrainingJobId,
+            ParentModelVersionId = version.ParentModelVersionId,
             CreatedAt = version.CreatedAt,
             IsActive = version.IsActive,
             DeploymentSlot = version.DeploymentSlot,
@@ -127,6 +130,7 @@ public sealed class ModelVersionEntity
             VersionName = VersionName,
             ModelPath = ModelPath,
             TrainingJobId = TrainingJobId,
+            ParentModelVersionId = ParentModelVersionId,
             CreatedAt = CreatedAt,
             IsActive = IsActive,
             DeploymentSlot = DeploymentSlot,
