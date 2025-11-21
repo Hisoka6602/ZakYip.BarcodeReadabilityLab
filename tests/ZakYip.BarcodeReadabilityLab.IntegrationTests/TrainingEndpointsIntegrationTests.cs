@@ -161,7 +161,7 @@ public sealed class TrainingEndpointsIntegrationTests : IClassFixture<CustomWebA
 
                     if (statusPayload.State == "失败")
                     {
-                        throw new InvalidOperationException($"Training job {jobId} failed: {statusPayload.ErrorMessage}");
+                        throw new InvalidOperationException($"训练任务 {jobId} 失败: {statusPayload.ErrorMessage}");
                     }
                 }
             }
@@ -169,6 +169,6 @@ public sealed class TrainingEndpointsIntegrationTests : IClassFixture<CustomWebA
             await Task.Delay(StatusPollingInterval, timeoutSource.Token);
         }
 
-        throw new TimeoutException($"Training job {jobId} did not complete within {timeout}.");
+        throw new TimeoutException($"训练任务 {jobId} 在 {timeout} 内未完成");
     }
 }
