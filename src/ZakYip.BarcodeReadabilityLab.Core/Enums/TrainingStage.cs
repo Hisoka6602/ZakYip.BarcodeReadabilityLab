@@ -1,8 +1,6 @@
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
-
-namespace ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-
 using System.ComponentModel;
+
+namespace ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 训练阶段枚举

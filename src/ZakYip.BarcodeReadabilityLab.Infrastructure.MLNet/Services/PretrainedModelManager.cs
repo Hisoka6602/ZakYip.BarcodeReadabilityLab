@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 预训练模型管理器实现

@@ -6,7 +6,7 @@ using Moq;
 using Xunit;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 训练进度通知器单元测试

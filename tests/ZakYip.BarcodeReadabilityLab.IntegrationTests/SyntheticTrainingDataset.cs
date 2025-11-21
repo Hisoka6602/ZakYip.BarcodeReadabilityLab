@@ -1,4 +1,4 @@
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;

@@ -10,7 +10,7 @@ using System.ComponentModel;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
 /// <summary>
@@ -188,11 +188,11 @@ public static class TrainingEndpoints
                 BatchSize = status.BatchSize,
                 Message = status.Status switch
                 {
-                    Core.Enum.TrainingJobState.Queued => "训练任务排队中",
-                    Core.Enum.TrainingJobState.Running => "训练任务正在执行",
-                    Core.Enum.TrainingJobState.Completed => "训练任务已完成",
-                    Core.Enum.TrainingJobState.Failed => $"训练任务失败: {status.ErrorMessage}",
-                    Core.Enum.TrainingJobState.Cancelled => "训练任务已取消",
+                    Core.Enums.TrainingJobState.Queued => "训练任务排队中",
+                    Core.Enums.TrainingJobState.Running => "训练任务正在执行",
+                    Core.Enums.TrainingJobState.Completed => "训练任务已完成",
+                    Core.Enums.TrainingJobState.Failed => $"训练任务失败: {status.ErrorMessage}",
+                    Core.Enums.TrainingJobState.Cancelled => "训练任务已取消",
                     _ => "未知状态"
                 },
                 StartTime = status.StartTime,
@@ -238,11 +238,11 @@ public static class TrainingEndpoints
                 BatchSize = status.BatchSize,
                 Message = status.Status switch
                 {
-                    Core.Enum.TrainingJobState.Queued => "训练任务排队中",
-                    Core.Enum.TrainingJobState.Running => "训练任务正在执行",
-                    Core.Enum.TrainingJobState.Completed => "训练任务已完成",
-                    Core.Enum.TrainingJobState.Failed => $"训练任务失败: {status.ErrorMessage}",
-                    Core.Enum.TrainingJobState.Cancelled => "训练任务已取消",
+                    Core.Enums.TrainingJobState.Queued => "训练任务排队中",
+                    Core.Enums.TrainingJobState.Running => "训练任务正在执行",
+                    Core.Enums.TrainingJobState.Completed => "训练任务已完成",
+                    Core.Enums.TrainingJobState.Failed => $"训练任务失败: {status.ErrorMessage}",
+                    Core.Enums.TrainingJobState.Cancelled => "训练任务已取消",
                     _ => "未知状态"
                 },
                 StartTime = status.StartTime,

@@ -1,7 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Service.Models;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 启动训练任务的请求模型

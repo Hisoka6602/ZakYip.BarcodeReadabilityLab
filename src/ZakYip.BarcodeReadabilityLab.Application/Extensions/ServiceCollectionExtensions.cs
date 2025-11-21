@@ -2,7 +2,7 @@ namespace ZakYip.BarcodeReadabilityLab.Application.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Application.Workers;
 
 /// <summary>

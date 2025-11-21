@@ -3,7 +3,7 @@ namespace ZakYip.BarcodeReadabilityLab.Service.Workers;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 目录监控后台工作器

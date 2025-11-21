@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 using ZakYip.BarcodeReadabilityLab.Service.Endpoints;
 

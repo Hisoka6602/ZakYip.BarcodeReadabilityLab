@@ -1,7 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 超参数调优器契约

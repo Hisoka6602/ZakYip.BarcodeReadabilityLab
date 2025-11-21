@@ -3,7 +3,7 @@ namespace ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Entities;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 训练任务实体（数据库表映射）

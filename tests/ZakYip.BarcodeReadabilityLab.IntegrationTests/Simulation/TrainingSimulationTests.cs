@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
@@ -84,7 +84,7 @@ public sealed class TrainingSimulationTests : IClassFixture<SimulationHostFactor
             .FirstOrDefaultAsync(j => j.JobId == startPayload.JobId);
         
         Assert.NotNull(jobEntity);
-        Assert.Equal(Core.Enum.TrainingJobState.Completed, jobEntity!.Status);
+        Assert.Equal(Core.Enums.TrainingJobState.Completed, jobEntity!.Status);
         Assert.NotNull(jobEntity.Accuracy);
         Assert.InRange(jobEntity.Accuracy.Value, 0.85m, 1.0m);
     }

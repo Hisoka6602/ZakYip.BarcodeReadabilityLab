@@ -1,4 +1,4 @@
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;

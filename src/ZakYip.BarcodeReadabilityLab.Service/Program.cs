@@ -18,7 +18,7 @@ using ZakYip.BarcodeReadabilityLab.Service.Endpoints;
 using ZakYip.BarcodeReadabilityLab.Service.Middleware;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Service.Configuration;
 using ZakYip.BarcodeReadabilityLab.Application.Extensions;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
