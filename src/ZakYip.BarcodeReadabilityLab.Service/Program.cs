@@ -202,6 +202,12 @@ try
     // 注册 SignalR Hub 端点
     app.MapHub<ZakYip.BarcodeReadabilityLab.Service.Hubs.TrainingProgressHub>("/hubs/training-progress");
 
+    // 添加 /swagger 重定向到 /api-docs
+    app.MapGet("/swagger", () => Results.Redirect("/api-docs"))
+        .ExcludeFromDescription();
+    app.MapGet("/swagger/index.html", () => Results.Redirect("/api-docs"))
+        .ExcludeFromDescription();
+
     // 注册 Minimal API 端点
     app.MapTrainingEndpoints();
     app.MapModelEndpoints();

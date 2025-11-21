@@ -3,6 +3,7 @@ namespace ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Entities;
+using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Converters;
 
 /// <summary>
 /// 训练任务数据库上下文
@@ -62,10 +63,14 @@ public class TrainingJobDbContext : DbContext
             entity.Property(e => e.Progress)
                 .HasPrecision(18, 6);
             
+            // 将 DateTimeOffset 转换为 Unix 时间戳（毫秒）以支持 SQLite ORDER BY
             entity.Property(e => e.StartTime)
-                .IsRequired();
+                .IsRequired()
+                .HasConversion<DateTimeOffsetToUnixMillisecondsConverter>();
             
-            entity.Property(e => e.CompletedTime);
+            // 将可空 DateTimeOffset 转换为可空 Unix 时间戳（毫秒）
+            entity.Property(e => e.CompletedTime)
+                .HasConversion<NullableDateTimeOffsetToUnixMillisecondsConverter>();
             
             entity.Property(e => e.ErrorMessage)
                 .HasMaxLength(2000);
@@ -159,8 +164,10 @@ public class TrainingJobDbContext : DbContext
             entity.Property(e => e.LogLoss)
                 .HasPrecision(18, 6);
 
+            // 将 DateTimeOffset 转换为 Unix 时间戳（毫秒）以支持 SQLite ORDER BY
             entity.Property(e => e.CreatedAt)
-                .IsRequired();
+                .IsRequired()
+                .HasConversion<DateTimeOffsetToUnixMillisecondsConverter>();
 
             entity.HasIndex(e => e.IsActive);
             entity.HasIndex(e => e.DeploymentSlot);
