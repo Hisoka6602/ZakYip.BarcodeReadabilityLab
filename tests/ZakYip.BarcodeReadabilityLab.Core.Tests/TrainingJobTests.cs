@@ -11,6 +11,7 @@ public class TrainingJobTests
         var job = new TrainingJob
         {
             JobId = Guid.NewGuid(),
+            JobType = TrainingJobType.Full,
             TrainingRootDirectory = "/tmp/train",
             OutputModelDirectory = "/tmp/output",
             LearningRate = 0.1m,

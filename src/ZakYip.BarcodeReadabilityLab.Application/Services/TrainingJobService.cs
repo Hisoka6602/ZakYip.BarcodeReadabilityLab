@@ -53,6 +53,7 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
         var trainingJob = new TrainingJob
         {
             JobId = jobId,
+            JobType = request.TransferLearningOptions?.Enable == true ? TrainingJobType.TransferLearning : TrainingJobType.Full,
             TrainingRootDirectory = request.TrainingRootDirectory,
             OutputModelDirectory = request.OutputModelDirectory,
             ValidationSplitRatio = request.ValidationSplitRatio,

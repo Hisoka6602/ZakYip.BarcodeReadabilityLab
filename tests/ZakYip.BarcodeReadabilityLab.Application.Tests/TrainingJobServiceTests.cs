@@ -106,6 +106,7 @@ public class TrainingJobServiceTests
         var trainingJob = new TrainingJob
         {
             JobId = jobId,
+            JobType = TrainingJobType.Full,
             TrainingRootDirectory = "ignored",
             OutputModelDirectory = "ignored",
             LearningRate = 0.05m,
@@ -156,6 +157,7 @@ public class TrainingJobServiceTests
         var trainingJob = new TrainingJob
         {
             JobId = jobId,
+            JobType = TrainingJobType.Full,
             TrainingRootDirectory = "ignored",
             OutputModelDirectory = "ignored",
             LearningRate = 0.05m,
@@ -194,6 +196,7 @@ public class TrainingJobServiceTests
         var trainingJob = new TrainingJob
         {
             JobId = jobId,
+            JobType = TrainingJobType.Full,
             TrainingRootDirectory = "ignored",
             OutputModelDirectory = "ignored",
             LearningRate = 0.05m,

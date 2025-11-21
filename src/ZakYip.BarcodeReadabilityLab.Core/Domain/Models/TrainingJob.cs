@@ -43,6 +43,21 @@ public record class TrainingJob
     public required int BatchSize { get; init; }
 
     /// <summary>
+    /// 训练任务类型
+    /// </summary>
+    public required TrainingJobType JobType { get; init; }
+
+    /// <summary>
+    /// 基础模型版本 ID（增量训练时必填，指向本次训练基于的模型版本）
+    /// </summary>
+    public Guid? BaseModelVersionId { get; init; }
+
+    /// <summary>
+    /// 父训练任务 ID（用于串联训练任务谱系）
+    /// </summary>
+    public Guid? ParentTrainingJobId { get; init; }
+
+    /// <summary>
     /// 训练任务状态
     /// </summary>
     public required TrainingJobState Status { get; init; }
