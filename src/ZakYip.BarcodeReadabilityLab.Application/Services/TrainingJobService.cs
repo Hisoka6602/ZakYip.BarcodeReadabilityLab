@@ -162,6 +162,8 @@ public sealed class TrainingJobService : ITrainingJobService, IDisposable
         await repository.AddAsync(trainingJob, cancellationToken);
 
         // 将增量训练请求转换为通用训练请求并加入队列
+        // 注意：当前实现使用通用训练管道，MergeWithHistoricalData 选项暂未实现
+        // TODO: 在 ML.NET 训练器中实现历史数据合并逻辑
         var generalRequest = new TrainingRequest
         {
             TrainingRootDirectory = request.TrainingRootDirectory,
