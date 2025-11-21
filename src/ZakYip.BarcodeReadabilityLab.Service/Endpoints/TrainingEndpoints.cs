@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using System.ComponentModel;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
@@ -73,6 +74,24 @@ public static class TrainingEndpoints
 - 包含每个任务的完整状态信息
 - 可用于分析和跟踪训练历史")
             .Produces<List<TrainingJobResponse>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
+
+        group.MapPost("/incremental-start", StartIncrementalTrainingAsync)
+            .WithName("StartIncrementalTraining")
+            .WithSummary("启动增量训练任务")
+            .WithDescription(@"基于指定模型版本与新增样本目录执行增量训练。
+
+**功能说明：**
+- 基于已有模型版本进行增量训练
+- 支持合并历史训练数据或仅使用新数据
+- 支持数据增强和数据平衡
+- 自动建立模型版本谱系关系
+
+**返回值：**
+- 成功时返回训练任务 ID，可用于后续查询任务状态")
+            .Produces<StartTrainingResponse>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/transfer-learning/start", StartTransferLearningTrainingAsync)
@@ -279,6 +298,86 @@ public static class TrainingEndpoints
 
         var attribute = (DescriptionAttribute?)Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute));
         return attribute?.Description ?? value.ToString();
+    }
+
+    /// <summary>
+    /// 启动增量训练任务
+    /// </summary>
+    private static async Task<IResult> StartIncrementalTrainingAsync(
+        [FromBody] IncrementalTrainingStartRequest? request,
+        [FromServices] ITrainingJobService trainingJobService,
+        [FromServices] IOptions<TrainingOptions> trainingOptions,
+        [FromServices] ILogger<Program> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (request is null)
+            {
+                logger.LogWarning("增量训练请求体为空");
+                return Results.BadRequest(new ErrorResponse { Error = "请求体不能为空" });
+            }
+
+            var defaultOptions = trainingOptions.Value;
+
+            var incrementalRequest = new IncrementalTrainingRequest
+            {
+                BaseModelVersionId = request.BaseModelVersionId,
+                TrainingRootDirectory = request.TrainingRootDirectory,
+                OutputModelDirectory = request.OutputModelDirectory,
+                MergeWithHistoricalData = request.MergeWithHistoricalData,
+                ValidationSplitRatio = request.ValidationSplitRatio ?? defaultOptions.ValidationSplitRatio,
+                LearningRate = request.LearningRate ?? defaultOptions.LearningRate,
+                Epochs = request.Epochs ?? defaultOptions.Epochs,
+                BatchSize = request.BatchSize ?? defaultOptions.BatchSize,
+                Remarks = request.Remarks,
+                DataAugmentation = request.DataAugmentation ?? (defaultOptions.DataAugmentation with { }),
+                DataBalancing = request.DataBalancing ?? (defaultOptions.DataBalancing with { })
+            };
+
+            logger.LogInformation(
+                "收到增量训练任务请求，基础模型版本: {BaseModelVersionId}, 训练目录: {TrainingRootDirectory}, 合并历史数据: {MergeWithHistoricalData}",
+                incrementalRequest.BaseModelVersionId,
+                incrementalRequest.TrainingRootDirectory,
+                incrementalRequest.MergeWithHistoricalData);
+
+            var jobId = await trainingJobService.StartIncrementalTrainingAsync(incrementalRequest, cancellationToken);
+
+            logger.LogInformation("增量训练任务已创建，JobId: {JobId}", jobId);
+
+            var response = new StartTrainingResponse
+            {
+                JobId = jobId,
+                Message = "增量训练任务已创建并加入队列",
+                JobType = "Incremental",
+                BaseModelVersionId = request.BaseModelVersionId
+            };
+
+            return Results.Ok(response);
+        }
+        catch (ArgumentException ex)
+        {
+            logger.LogWarning(ex, "增量训练请求参数无效");
+            return Results.BadRequest(new ErrorResponse { Error = ex.Message });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            logger.LogWarning(ex, "训练目录不存在");
+            return Results.BadRequest(new ErrorResponse { Error = ex.Message });
+        }
+        catch (TrainingException ex) when (ex.ErrorCode == "BASE_MODEL_NOT_FOUND")
+        {
+            logger.LogWarning(ex, "基础模型版本不存在");
+            return Results.NotFound(new ErrorResponse { Error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "启动增量训练任务失败");
+            return Results.Problem(
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "启动增量训练任务失败");
+        }
     }
 
     /// <summary>
