@@ -114,9 +114,21 @@ public sealed class TrainingProfileOptionsValidator : IValidateOptions<TrainingP
                 errors.Add($"训练档位 {profileName} 的数据增强副本数不能为负数，当前值: {aug.AugmentedImagesPerSample}");
             }
 
+            // 验证旋转配置一致性
+            if (!aug.EnableRotation && aug.RotationProbability > 0.0)
+            {
+                errors.Add($"训练档位 {profileName} 的旋转未启用但概率为 {aug.RotationProbability}，应设为 0.0");
+            }
+
             if (aug.RotationProbability < 0.0 || aug.RotationProbability > 1.0)
             {
                 errors.Add($"训练档位 {profileName} 的旋转概率必须在 0.0 到 1.0 之间，当前值: {aug.RotationProbability}");
+            }
+
+            // 验证水平翻转配置一致性
+            if (!aug.EnableHorizontalFlip && aug.HorizontalFlipProbability > 0.0)
+            {
+                errors.Add($"训练档位 {profileName} 的水平翻转未启用但概率为 {aug.HorizontalFlipProbability}，应设为 0.0");
             }
 
             if (aug.HorizontalFlipProbability < 0.0 || aug.HorizontalFlipProbability > 1.0)
@@ -124,9 +136,21 @@ public sealed class TrainingProfileOptionsValidator : IValidateOptions<TrainingP
                 errors.Add($"训练档位 {profileName} 的水平翻转概率必须在 0.0 到 1.0 之间，当前值: {aug.HorizontalFlipProbability}");
             }
 
+            // 验证垂直翻转配置一致性
+            if (!aug.EnableVerticalFlip && aug.VerticalFlipProbability > 0.0)
+            {
+                errors.Add($"训练档位 {profileName} 的垂直翻转未启用但概率为 {aug.VerticalFlipProbability}，应设为 0.0");
+            }
+
             if (aug.VerticalFlipProbability < 0.0 || aug.VerticalFlipProbability > 1.0)
             {
                 errors.Add($"训练档位 {profileName} 的垂直翻转概率必须在 0.0 到 1.0 之间，当前值: {aug.VerticalFlipProbability}");
+            }
+
+            // 验证亮度调整配置一致性
+            if (!aug.EnableBrightnessAdjustment && aug.BrightnessProbability > 0.0)
+            {
+                errors.Add($"训练档位 {profileName} 的亮度调整未启用但概率为 {aug.BrightnessProbability}，应设为 0.0");
             }
 
             if (aug.BrightnessProbability < 0.0 || aug.BrightnessProbability > 1.0)
