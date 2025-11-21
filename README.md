@@ -368,6 +368,20 @@ ZakYip.BarcodeReadabilityLab/
 - **过采样（OverSample）**: 复制少数类样本
 - **欠采样（UnderSample）**: 裁剪多数类样本
 
+### 5. 健康检查与监控
+
+#### 健康检查端点
+- **`/health`**: 综合健康检查（配置、数据库、模型）
+- **`/ready`**: 就绪检查（适用于 Kubernetes readiness probe）
+- **`/live`**: 存活检查（适用于 Kubernetes liveness probe）
+
+#### 仿真模式
+- **自动数据生成**: 启动时自动生成示例训练数据
+- **自动目录创建**: 配置的目录不存在时自动创建
+- **降级运行**: 配置检查失败时仍可启动，以降级模式运行
+
+详见：[健康检查与仿真模式使用指南](docs/开发文档/健康检查与仿真模式.md)
+
 ---
 
 ## API 文档
@@ -377,6 +391,46 @@ ZakYip.BarcodeReadabilityLab/
 - **Base URL**: `http://localhost:5000`（可在 appsettings.json 配置）
 - **Content-Type**: `application/json`
 - **响应格式**: JSON（camelCase 命名）
+
+### 健康检查 API
+
+#### 综合健康检查
+
+```http
+GET /health
+```
+
+返回所有健康检查项的状态。
+
+**响应 200 OK:**
+```json
+{
+  "status": "Healthy",
+  "checks": [
+    {
+      "name": "configuration",
+      "status": "Healthy",
+      "description": "配置检查通过"
+    }
+  ]
+}
+```
+
+#### 就绪检查
+
+```http
+GET /ready
+```
+
+检查服务是否准备好处理请求（适用于 Kubernetes readiness probe）。
+
+#### 存活检查
+
+```http
+GET /live
+```
+
+轻量级存活检查（适用于 Kubernetes liveness probe）。
 
 ### 训练任务 API
 
@@ -925,6 +979,29 @@ curl -X POST http://localhost:5000/api/training/start \
 **预估工作量**: 3-4 天
 **优先级**: 🟡 中
 
+#### ✅ PR #22: 启动配置自检、健康检查端点与仿真训练环境预设（已完成）
+**目标**: 提升系统可靠性和开发体验
+- ✅ 实现启动配置自检服务
+  - ✅ 检查关键目录和配置项
+  - ✅ 自动创建缺失目录
+  - ✅ 数据库连接检查
+  - ✅ 详细中文日志记录
+- ✅ 实现健康检查端点
+  - ✅ `/health`: 综合健康检查（配置、数据库、模型）
+  - ✅ `/ready`: 就绪检查（Kubernetes readiness probe）
+  - ✅ `/live`: 存活检查（Kubernetes liveness probe）
+- ✅ 实现仿真训练模式
+  - ✅ 自动生成示例训练数据（3个类别）
+  - ✅ 存储在临时目录
+  - ✅ 支持快速验证训练流程
+- ✅ 降级运行模式
+  - ✅ 配置检查失败时不崩溃
+  - ✅ 以降级模式继续运行
+
+**状态**: 已完成
+
+详见：[健康检查与仿真模式使用指南](docs/开发文档/健康检查与仿真模式.md)
+
 #### PR #10: 实现监控告警系统
 **目标**: 提升系统可观测性和可靠性
 - 集成 Prometheus 指标采集
@@ -932,7 +1009,6 @@ curl -X POST http://localhost:5000/api/training/start \
   - API 请求指标（QPS、延迟、错误率）
   - 系统资源指标（CPU、内存、磁盘）
 - 配置 Grafana 仪表板
-- 实现健康检查端点（/health, /ready, /live）
 - 实现邮件/Webhook 告警
 - 添加告警规则配置（阈值、频率）
 
