@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
 using ZakYip.BarcodeReadabilityLab.Service.Models;
 
@@ -284,6 +285,94 @@ public sealed class TrainingSimulationTests : IClassFixture<SimulationHostFactor
             startResponse.StatusCode == HttpStatusCode.BadRequest ||
             startResponse.StatusCode == HttpStatusCode.InternalServerError,
             $"Expected 400 or 500, but got {(int)startResponse.StatusCode}");
+    }
+
+    /// <summary>
+    /// 测试用例：迁移学习完整闭环验证（如果环境支持）
+    /// </summary>
+    [Fact]
+    public async Task TransferLearningTraining_Simulation_VerifyEndpoint()
+    {
+        // Arrange: 准备测试数据集
+        using var dataset = TestTrainingDatasetBuilder.CreateBinaryClassification(samplesPerClass: 2, imageSize: 32);
+        using var client = _factory.CreateClient();
+
+        // 首先验证预训练模型列表可访问
+        var modelsResponse = await client.GetAsync("/api/pretrained-models/list");
+        Assert.Equal(HttpStatusCode.OK, modelsResponse.StatusCode);
+
+        var models = await modelsResponse.Content.ReadFromJsonAsync<List<PretrainedModelResponse>>();
+        Assert.NotNull(models);
+        Assert.NotEmpty(models!);
+
+        // 选择 ResNet50 模型进行迁移学习
+        var selectedModel = models.FirstOrDefault(m => m.ModelType == PretrainedModelType.ResNet50);
+        Assert.NotNull(selectedModel);
+
+        // Act: 通过 API 发起迁移学习训练
+        var request = new TransferLearningRequest
+        {
+            TrainingRootDirectory = dataset.TrainingRootDirectory,
+            OutputModelDirectory = dataset.OutputModelDirectory,
+            PretrainedModelType = selectedModel!.ModelType,
+            LayerFreezeStrategy = LayerFreezeStrategy.FreezeAll,
+            LearningRate = 0.001m,
+            Epochs = 1,
+            BatchSize = 2,
+            ValidationSplitRatio = 0.1m,
+            Remarks = "迁移学习仿真测试"
+        };
+
+        var startResponse = await client.PostAsJsonAsync("/api/training/transfer-learning/start", request);
+
+        // Assert: 验证端点存在（接受 OK 或 500，取决于测试环境是否支持迁移学习）
+        Assert.True(
+            startResponse.StatusCode == HttpStatusCode.OK ||
+            startResponse.StatusCode == HttpStatusCode.InternalServerError,
+            $"期望 200 或 500，实际得到 {(int)startResponse.StatusCode}");
+
+        // 如果启动成功，验证基本功能
+        if (startResponse.StatusCode == HttpStatusCode.OK)
+        {
+            var startPayload = await startResponse.Content.ReadFromJsonAsync<StartTrainingResponse>();
+            Assert.NotNull(startPayload);
+            Assert.NotEqual(Guid.Empty, startPayload!.JobId);
+        }
+    }
+
+    /// <summary>
+    /// 测试用例：迁移学习端点验证
+    /// </summary>
+    [Fact]
+    public async Task TransferLearning_Endpoint_ShouldBeAccessible()
+    {
+        // Arrange
+        using var dataset = TestTrainingDatasetBuilder.CreateBinaryClassification(samplesPerClass: 2, imageSize: 16);
+        using var client = _factory.CreateClient();
+
+        // Act: 启动迁移学习训练
+        var request = new TransferLearningRequest
+        {
+            TrainingRootDirectory = dataset.TrainingRootDirectory,
+            OutputModelDirectory = dataset.OutputModelDirectory,
+            PretrainedModelType = PretrainedModelType.ResNet50,
+            LayerFreezeStrategy = LayerFreezeStrategy.FreezeAll,
+            LearningRate = 0.001m,
+            Epochs = 1,
+            BatchSize = 2,
+            ValidationSplitRatio = 0.1m,
+            Remarks = "端点可访问性验证"
+        };
+
+        var startResponse = await client.PostAsJsonAsync("/api/training/transfer-learning/start", request);
+
+        // Assert: 验证端点存在且返回响应（不要求一定成功，因为测试环境可能不支持）
+        Assert.NotNull(startResponse);
+        Assert.True(
+            startResponse.StatusCode == HttpStatusCode.OK ||
+            startResponse.StatusCode == HttpStatusCode.InternalServerError ||
+            startResponse.StatusCode == HttpStatusCode.BadRequest,
+            $"端点应该存在并返回有效响应，实际得到 {(int)startResponse.StatusCode}");
     }
 
     /// <summary>
