@@ -2,7 +2,7 @@ namespace ZakYip.BarcodeReadabilityLab.Service.HealthChecks;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
-using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Options;
+using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Models;
 
 /// <summary>
 /// 模型健康检查

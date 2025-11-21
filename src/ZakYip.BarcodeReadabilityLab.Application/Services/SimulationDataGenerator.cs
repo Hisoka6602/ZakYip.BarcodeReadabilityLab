@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Drawing.Processing;
 
 /// <summary>
 /// 仿真数据生成器实现
@@ -90,51 +89,35 @@ public class SimulationDataGenerator : ISimulationDataGenerator
         using var image = new Image<Rgba32>(width, height);
 
         // 根据类别设置不同的图片特征
+        // 直接在创建时设置像素颜色
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                Rgba32 color = category switch
+                {
+                    "Normal" => new Rgba32(255, 255, 255), // 白色 - 正常图片
+                    "Blurry" => new Rgba32(211, 211, 211), // 浅灰色 - 模糊图片
+                    "LowLight" => new Rgba32(64, 64, 64), // 暗灰色 - 光照不足
+                    _ => new Rgba32(255, 255, 255)
+                };
+                
+                image[x, y] = color;
+            }
+        }
+
+        // 应用效果
         image.Mutate(ctx =>
         {
-            switch (category)
+            if (category == "Blurry")
             {
-                case "Normal":
-                    // 正常图片：清晰的颜色和对比度
-                    ctx.Fill(Color.White);
-                    ctx.DrawLines(Color.Black, 3, new PointF[]
-                    {
-                        new PointF(10, 50),
-                        new PointF(30, 30),
-                        new PointF(50, 70),
-                        new PointF(70, 40),
-                        new PointF(90, 60)
-                    });
-                    break;
-
-                case "Blurry":
-                    // 模糊图片：使用低对比度颜色
-                    ctx.Fill(Color.LightGray);
-                    ctx.DrawLines(Color.Gray, 2, new PointF[]
-                    {
-                        new PointF(10, 50),
-                        new PointF(30, 30),
-                        new PointF(50, 70),
-                        new PointF(70, 40),
-                        new PointF(90, 60)
-                    });
-                    // 应用模糊效果
-                    ctx.GaussianBlur(5);
-                    break;
-
-                case "LowLight":
-                    // 光照不足：暗色背景和低亮度
-                    ctx.Fill(Color.DarkGray);
-                    ctx.DrawLines(Color.DimGray, 2, new PointF[]
-                    {
-                        new PointF(10, 50),
-                        new PointF(30, 30),
-                        new PointF(50, 70),
-                        new PointF(70, 40),
-                        new PointF(90, 60)
-                    });
-                    ctx.Brightness(0.3f);
-                    break;
+                // 应用模糊效果
+                ctx.GaussianBlur(5);
+            }
+            else if (category == "LowLight")
+            {
+                // 应用低亮度
+                ctx.Brightness(0.3f);
             }
 
             // 添加一些随机变化使每张图片不完全相同

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Repositories;
+using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Services;
 
 /// <summary>
 /// 持久化服务注册扩展方法
@@ -44,6 +45,9 @@ public static class ServiceCollectionExtensions
         // 注册仓储
         services.AddScoped<ITrainingJobRepository, TrainingJobRepository>();
         services.AddScoped<IModelVersionRepository, ModelVersionRepository>();
+
+        // 注册数据库连接检查器
+        services.AddScoped<IDatabaseConnectionChecker, DatabaseConnectionChecker>();
 
         // 确保数据库已创建
         using var serviceProvider = services.BuildServiceProvider();

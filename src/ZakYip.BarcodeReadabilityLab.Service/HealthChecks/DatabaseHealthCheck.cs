@@ -29,8 +29,7 @@ public class DatabaseHealthCheck : IHealthCheck
                     "数据库连接正常",
                     data: new Dictionary<string, object>
                     {
-                        ["isDatabaseOk"] = true,
-                        ["connectionString"] = _dbContext.Database.GetConnectionString() ?? "未知"
+                        ["isDatabaseOk"] = true
                     });
             }
 

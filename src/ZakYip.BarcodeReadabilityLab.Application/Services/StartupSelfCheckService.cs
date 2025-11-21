@@ -3,7 +3,7 @@ namespace ZakYip.BarcodeReadabilityLab.Application.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
-using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
+using ZakYip.BarcodeReadabilityLab.Core.Domain.Contracts;
 
 /// <summary>
 /// 启动配置自检服务实现
@@ -13,19 +13,19 @@ public class StartupSelfCheckService : IStartupSelfCheckService
     private readonly ILogger<StartupSelfCheckService> _logger;
     private readonly BarcodeAnalyzerOptions _analyzerOptions;
     private readonly TrainingOptions _trainingOptions;
-    private readonly TrainingJobDbContext _dbContext;
+    private readonly IDatabaseConnectionChecker? _databaseChecker;
     private StartupSelfCheckResult? _lastCheckResult;
 
     public StartupSelfCheckService(
         ILogger<StartupSelfCheckService> logger,
         IOptions<BarcodeAnalyzerOptions> analyzerOptions,
         IOptions<TrainingOptions> trainingOptions,
-        TrainingJobDbContext dbContext)
+        IDatabaseConnectionChecker? databaseChecker = null)
     {
         _logger = logger;
         _analyzerOptions = analyzerOptions.Value;
         _trainingOptions = trainingOptions.Value;
-        _dbContext = dbContext;
+        _databaseChecker = databaseChecker;
     }
 
     public async Task<StartupSelfCheckResult> PerformSelfCheckAsync()
@@ -175,10 +175,22 @@ public class StartupSelfCheckService : IStartupSelfCheckService
 
     private async Task<SelfCheckResult> CheckDatabaseConnectionAsync()
     {
+        // 如果没有提供数据库检查器，跳过检查
+        if (_databaseChecker == null)
+        {
+            _logger.LogInformation("ℹ️ 数据库连接检查已跳过（未配置数据库检查器）");
+            return new SelfCheckResult
+            {
+                CheckName = "数据库连接",
+                IsHealthy = true,
+                Description = "数据库连接检查已跳过"
+            };
+        }
+
         try
         {
             // 尝试连接数据库
-            var canConnect = await _dbContext.Database.CanConnectAsync();
+            var canConnect = await _databaseChecker.CanConnectAsync();
 
             if (canConnect)
             {
