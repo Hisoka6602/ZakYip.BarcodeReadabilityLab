@@ -636,6 +636,109 @@ notes: "生产环境模型"
 }
 ```
 
+### 在线推理与评估 API
+
+#### 1. 单张图片推理
+
+```http
+POST /api/evaluation/analyze-single
+Content-Type: multipart/form-data
+
+imageFile: [binary]
+expectedLabel: "Truncated" (可选)
+returnRawScores: true (可选，默认 false)
+```
+
+**响应 200 OK:**
+```json
+{
+  "predictedLabel": "Truncated",
+  "predictedLabelDisplayName": "条码被截断",
+  "confidence": 0.93,
+  "isCorrect": true,
+  "expectedLabel": "Truncated",
+  "noreadReasonScores": {
+    "Truncated": 0.93,
+    "BlurryOrOutOfFocus": 0.03,
+    "ReflectionOrOverexposure": 0.02,
+    "WrinkledOrDeformed": 0.01,
+    "NoBarcodeInImage": 0.01
+  }
+}
+```
+
+**字段说明：**
+- `predictedLabel`: 预测的标签枚举名称
+- `predictedLabelDisplayName`: 标签的中文描述
+- `confidence`: 置信度（0.0 到 1.0）
+- `isCorrect`: 是否预测正确（仅当提供 expectedLabel 时有值）
+- `noreadReasonScores`: 各类别的原始概率分布（仅当 returnRawScores=true 时返回）
+
+**支持的标签：**
+- `Truncated`: 条码被截断
+- `BlurryOrOutOfFocus`: 条码模糊或失焦
+- `ReflectionOrOverexposure`: 反光或高亮过曝
+- `WrinkledOrDeformed`: 条码褶皱或形变严重
+- `NoBarcodeInImage`: 画面内无条码
+- `StainedOrObstructed`: 条码有污渍或遮挡
+- `ClearButNotRecognized`: 条码清晰但未被识别
+
+#### 2. 批量图片推理
+
+```http
+POST /api/evaluation/analyze-batch
+Content-Type: multipart/form-data
+
+imageFiles: [binary] (多个文件)
+labelsJson: '{"img1.jpg": "Truncated", "img2.jpg": "BlurryOrOutOfFocus"}' (可选)
+returnRawScores: false (可选)
+```
+
+**响应 200 OK:**
+```json
+{
+  "items": [
+    {
+      "fileName": "img1.jpg",
+      "predictedLabel": "Truncated",
+      "predictedLabelDisplayName": "条码被截断",
+      "confidence": 0.93,
+      "expectedLabel": "Truncated",
+      "isCorrect": true
+    },
+    {
+      "fileName": "img2.jpg",
+      "predictedLabel": "BlurryOrOutOfFocus",
+      "predictedLabelDisplayName": "条码模糊或失焦",
+      "confidence": 0.88,
+      "expectedLabel": "BlurryOrOutOfFocus",
+      "isCorrect": true
+    }
+  ],
+  "summary": {
+    "total": 2,
+    "withExpectedLabel": 2,
+    "correctCount": 2,
+    "accuracy": 1.0,
+    "macroF1": 1.0,
+    "microF1": 1.0
+  }
+}
+```
+
+**汇总统计说明：**
+- `total`: 总样本数
+- `withExpectedLabel`: 包含预期标签的样本数
+- `correctCount`: 预测正确的样本数
+- `accuracy`: 准确率（仅针对有预期标签的样本）
+- `macroF1`: 宏平均 F1 分数
+- `microF1`: 微平均 F1 分数
+
+**限制：**
+- 单个文件最大: 10MB（可在 appsettings.json 配置）
+- 批量最大数量: 100 张（可配置）
+- 支持的格式: .jpg, .jpeg, .png, .bmp
+
 ### SignalR Hub
 
 **Hub URL**: `/hubs/training-progress`

@@ -2,7 +2,7 @@ namespace ZakYip.BarcodeReadabilityLab.Application.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Application.Workers;
 
 /// <summary>
@@ -43,6 +43,9 @@ public static class ServiceCollectionExtensions
 
         // 注册仿真数据生成器
         services.AddSingleton<ISimulationDataGenerator, SimulationDataGenerator>();
+
+        // 注册图片评估服务
+        services.AddScoped<IImageEvaluationService, ImageEvaluationService>();
 
         // 注册训练任务恢复服务（在其他服务启动前执行）
         services.AddHostedService<TrainingJobRecoveryService>();

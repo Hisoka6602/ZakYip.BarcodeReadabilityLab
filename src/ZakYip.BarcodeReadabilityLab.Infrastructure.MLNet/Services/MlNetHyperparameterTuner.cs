@@ -3,7 +3,7 @@ namespace ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Services;
 using Microsoft.Extensions.Logging;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Exceptions;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Contracts;
 
 /// <summary>

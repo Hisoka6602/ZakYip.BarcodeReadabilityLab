@@ -1,6 +1,6 @@
 using System.ComponentModel;
 
-namespace ZakYip.BarcodeReadabilityLab.Core.Enum;
+namespace ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 评估指标类型

@@ -1,7 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Entities;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 模型版本持久化实体

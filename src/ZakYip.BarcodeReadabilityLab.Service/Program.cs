@@ -18,7 +18,7 @@ using ZakYip.BarcodeReadabilityLab.Service.Endpoints;
 using ZakYip.BarcodeReadabilityLab.Service.Middleware;
 using ZakYip.BarcodeReadabilityLab.Application.Options;
 using ZakYip.BarcodeReadabilityLab.Application.Services;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Service.Configuration;
 using ZakYip.BarcodeReadabilityLab.Application.Extensions;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.MLNet.Extensions;
@@ -64,6 +64,8 @@ try
         builder.Configuration.GetSection("ApiSettings"));
     builder.Services.Configure<LoggingOptions>(
         builder.Configuration.GetSection("LoggingOptions"));
+    builder.Services.Configure<EvaluationOptions>(
+        builder.Configuration.GetSection("EvaluationOptions"));
 
     // 注册动态日志级别管理服务
     builder.Services.AddSingleton(levelSwitch);
@@ -266,6 +268,7 @@ try
     app.MapModelEndpoints();
     app.MapLoggingEndpoints();
     app.MapPretrainedModelsEndpoints();
+    app.MapEvaluationEndpoints();
 
     // 注册健康检查端点
     app.MapHealthChecks("/health", new HealthCheckOptions

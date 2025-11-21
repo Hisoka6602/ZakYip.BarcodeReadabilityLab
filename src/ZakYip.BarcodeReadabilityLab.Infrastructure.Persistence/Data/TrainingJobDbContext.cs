@@ -2,7 +2,7 @@ namespace ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
 
 using Microsoft.EntityFrameworkCore;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
-using ZakYip.BarcodeReadabilityLab.Core.Enum;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Entities;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Converters;
 
