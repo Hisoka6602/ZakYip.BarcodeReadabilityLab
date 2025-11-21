@@ -3,6 +3,7 @@ namespace ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Data;
 using Microsoft.EntityFrameworkCore;
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
 using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Entities;
+using ZakYip.BarcodeReadabilityLab.Infrastructure.Persistence.Converters;
 
 /// <summary>
 /// 训练任务数据库上下文
@@ -65,15 +66,11 @@ public class TrainingJobDbContext : DbContext
             // 将 DateTimeOffset 转换为 Unix 时间戳（毫秒）以支持 SQLite ORDER BY
             entity.Property(e => e.StartTime)
                 .IsRequired()
-                .HasConversion(
-                    v => v.ToUnixTimeMilliseconds(),
-                    v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+                .HasConversion<DateTimeOffsetToUnixMillisecondsConverter>();
             
             // 将可空 DateTimeOffset 转换为可空 Unix 时间戳（毫秒）
             entity.Property(e => e.CompletedTime)
-                .HasConversion(
-                    v => v.HasValue ? v.Value.ToUnixTimeMilliseconds() : (long?)null,
-                    v => v.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : (DateTimeOffset?)null);
+                .HasConversion<NullableDateTimeOffsetToUnixMillisecondsConverter>();
             
             entity.Property(e => e.ErrorMessage)
                 .HasMaxLength(2000);
@@ -170,9 +167,7 @@ public class TrainingJobDbContext : DbContext
             // 将 DateTimeOffset 转换为 Unix 时间戳（毫秒）以支持 SQLite ORDER BY
             entity.Property(e => e.CreatedAt)
                 .IsRequired()
-                .HasConversion(
-                    v => v.ToUnixTimeMilliseconds(),
-                    v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+                .HasConversion<DateTimeOffsetToUnixMillisecondsConverter>();
 
             entity.HasIndex(e => e.IsActive);
             entity.HasIndex(e => e.DeploymentSlot);
