@@ -61,6 +61,10 @@ internal static class TrainingJobMapper
         {
             JobId = entity.JobId,
             JobType = entity.JobType,
+            ProfileType = entity.ProfileType,
+            HyperparametersSnapshot = entity.HyperparametersSnapshot,
+            TriggeredEarlyStopping = entity.TriggeredEarlyStopping,
+            ActualEpochs = entity.ActualEpochs,
             BaseModelVersionId = entity.BaseModelVersionId,
             ParentTrainingJobId = entity.ParentTrainingJobId,
             TrainingRootDirectory = entity.TrainingRootDirectory,
@@ -95,6 +99,10 @@ internal static class TrainingJobMapper
         {
             JobId = model.JobId,
             JobType = model.JobType,
+            ProfileType = model.ProfileType,
+            HyperparametersSnapshot = model.HyperparametersSnapshot,
+            TriggeredEarlyStopping = model.TriggeredEarlyStopping,
+            ActualEpochs = model.ActualEpochs,
             BaseModelVersionId = model.BaseModelVersionId,
             ParentTrainingJobId = model.ParentTrainingJobId,
             TrainingRootDirectory = model.TrainingRootDirectory,
@@ -142,6 +150,10 @@ internal static class TrainingJobMapper
         entity.Progress = model.Progress;
         entity.CompletedTime = model.CompletedTime;
         entity.ErrorMessage = model.ErrorMessage;
+        entity.ProfileType = model.ProfileType;
+        entity.HyperparametersSnapshot = model.HyperparametersSnapshot;
+        entity.TriggeredEarlyStopping = model.TriggeredEarlyStopping;
+        entity.ActualEpochs = model.ActualEpochs;
         
         // 更新评估指标（如果有）
         if (model.EvaluationMetrics is not null)

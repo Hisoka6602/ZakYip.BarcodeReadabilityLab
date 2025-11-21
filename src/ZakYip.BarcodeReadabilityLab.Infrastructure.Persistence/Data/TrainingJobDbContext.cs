@@ -41,6 +41,15 @@ public class TrainingJobDbContext : DbContext
                 .IsRequired()
                 .HasConversion<int>();
 
+            entity.Property(e => e.ProfileType)
+                .HasConversion<int?>();
+
+            entity.Property(e => e.HyperparametersSnapshot);
+
+            entity.Property(e => e.TriggeredEarlyStopping);
+
+            entity.Property(e => e.ActualEpochs);
+
             entity.Property(e => e.BaseModelVersionId);
 
             entity.Property(e => e.ParentTrainingJobId);
