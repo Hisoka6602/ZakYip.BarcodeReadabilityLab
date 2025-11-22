@@ -1,6 +1,7 @@
 namespace ZakYip.BarcodeReadabilityLab.Application.Services;
 
 using ZakYip.BarcodeReadabilityLab.Core.Domain.Models;
+using ZakYip.BarcodeReadabilityLab.Core.Enums;
 
 /// <summary>
 /// 增量训练请求
@@ -21,6 +22,11 @@ public record class IncrementalTrainingRequest
     /// 训练输出模型文件存放目录路径
     /// </summary>
     public required string OutputModelDirectory { get; init; }
+
+    /// <summary>
+    /// 使用的训练档位类型（可选，不指定则使用默认档位或显式参数）
+    /// </summary>
+    public TrainingProfileType? ProfileType { get; init; }
 
     /// <summary>
     /// 是否合并历史训练数据

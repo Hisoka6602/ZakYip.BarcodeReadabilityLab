@@ -19,6 +19,11 @@ public record class TrainingRequest
     public required string OutputModelDirectory { get; init; }
 
     /// <summary>
+    /// 使用的训练档位类型（可选，不指定则使用默认档位或显式参数）
+    /// </summary>
+    public TrainingProfileType? ProfileType { get; init; }
+
+    /// <summary>
     /// 验证集分割比例（0.0 到 1.0 之间，可选）
     /// </summary>
     public decimal? ValidationSplitRatio { get; init; }
