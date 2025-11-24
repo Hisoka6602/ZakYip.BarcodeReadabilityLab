@@ -1422,16 +1422,34 @@ dotnet ef database update PreviousMigrationName --project src/ZakYip.BarcodeRead
 
 ## 相关文档
 
-- **[QUICKSTART.md](QUICKSTART.md)** - 5 分钟快速上手指南
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - 项目架构详细说明
-- **[USAGE.md](USAGE.md)** - 详细使用示例和场景
-- **[TRAINING_SERVICE.md](TRAINING_SERVICE.md)** - 训练服务详细说明
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Windows 服务部署指南
-- **[WINDOWS_SERVICE_SETUP.md](WINDOWS_SERVICE_SETUP.md)** - Windows 服务设置指南
-- **[LOGGING_AND_EXCEPTIONS.md](LOGGING_AND_EXCEPTIONS.md)** - 日志和异常处理机制
-- **[LOGGING_ENHANCEMENTS.md](LOGGING_ENHANCEMENTS.md)** - 日志配置增强功能
-- **[docs/TRAINING_HYPERPARAMETER_GUIDE.md](docs/TRAINING_HYPERPARAMETER_GUIDE.md)** - 训练超参数推荐配置
-- **[docs/TRANSFER_LEARNING_GUIDE.md](docs/TRANSFER_LEARNING_GUIDE.md)** - 迁移学习使用指南（新增）
+### 快速开始与使用指南
+- **[快速开始](docs/开发文档/快速开始.md)** - 5 分钟快速上手指南
+- **[使用指南](docs/开发文档/使用指南.md)** - 详细使用示例和场景
+- **[分类指南](docs/classification-guide.md)** - 条码图片分类类型说明与判断标准
+
+### 架构与设计
+- **[架构设计](docs/架构设计/架构设计.md)** - 项目架构详细说明
+- **[持久化设计](docs/架构设计/持久化设计.md)** - 数据持久化层设计文档
+
+### 训练与模型管理
+- **[训练服务](docs/开发文档/训练服务.md)** - 训练服务详细说明
+- **[训练超参数指南](docs/开发文档/训练超参数指南.md)** - 训练超参数推荐配置
+- **[迁移学习指南](docs/开发文档/迁移学习指南.md)** - 迁移学习使用指南
+- **[训练进度优化](docs/开发文档/训练进度优化.md)** - 训练进度监控优化
+- **[模型导入导出指南](docs/开发文档/模型导入导出指南.md)** - 模型管理功能使用指南
+
+### 部署与运维
+- **[部署指南](docs/部署运维/部署指南.md)** - Windows 服务部署指南
+- **[Windows 服务配置](docs/部署运维/Windows服务配置.md)** - Windows 服务设置指南
+
+### 日志与监控
+- **[日志与异常处理](docs/开发文档/日志与异常处理.md)** - 日志和异常处理机制
+- **[日志增强功能](docs/开发文档/日志增强功能.md)** - 日志配置增强功能
+- **[健康检查与仿真模式](docs/开发文档/健康检查与仿真模式.md)** - 健康检查端点与仿真训练环境
+
+### 其他
+- **[Swagger 集成](docs/开发文档/Swagger集成.md)** - Swagger API 文档集成
+- **[完整文档索引](docs/README.md)** - 查看所有文档列表
 
 ---
 
